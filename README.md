@@ -115,18 +115,26 @@ Claude Code users: also run `/plugin uninstall reolink-cli` to clean the marketp
 ## Quick start
 
 ```bash
-# Bootstrap local config (gateway addr) + registry files
+# Write the config and registry templates. Both land in your OS config
+# directory and are created owner-only (0600).
 reolink-cli config init
 
-# Register your first camera — password is prompted, never on argv
-reolink-cli device add front-door --host 192.168.1.41 --user admin --tags outdoor,entry
-
-# Start the local gateway (needed by most control commands), then operate
+# Start the local gateway — most control commands route through it
 reolink-cli gateway start --addr 127.0.0.1:9000 &
-reolink-cli --camera front-door login
-reolink-cli --camera front-door info
-reolink-cli --camera front-door snapshot --file ./front-door.jpg
+export REOLINK_GATEWAY_ADDR=127.0.0.1:9000
+
+# Register your first camera. Pick a name of your own: `config init` writes
+# placeholder entries (front-door, garage, lab-v30) to show the file format,
+# and `device add` refuses to overwrite an existing one.
+reolink-cli device add porch --host 192.168.1.41 --user admin --tags outdoor,entry --password-stdin
+
+reolink-cli --camera porch login
+reolink-cli --camera porch info
+reolink-cli --camera porch snapshot --file ./porch.jpg
 ```
+
+The placeholder entries are examples, not cameras. Remove them once you have
+registered your own: `reolink-cli device remove front-door`.
 
 Bulk-import discovered devices (credentials via `REOLINK_PASSWORD`, never
 plaintext `--password` on the command line):
