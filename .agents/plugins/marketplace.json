@@ -1,0 +1,20 @@
+{
+  "name": "reolink-cli",
+  "interface": {
+    "displayName": "Reolink CLI"
+  },
+  "plugins": [
+    {
+      "name": "reolink-cli",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

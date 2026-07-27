@@ -1,0 +1,19 @@
+{
+  "name": "reolink-cli",
+  "description": "Operate Reolink cameras locally: discover, login, inspect, configure, preview, snapshot, and control PTZ/light/audio/detection/recording.",
+  "version": "0.10.0",
+  "author": {
+    "name": "reolink"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "reolink",
+    "camera",
+    "cli",
+    "ptz",
+    "onvif"
+  ],
+  "skills": [
+    "./skills/reolink-cli"
+  ]
+}

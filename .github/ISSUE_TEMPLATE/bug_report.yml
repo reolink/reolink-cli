@@ -1,0 +1,50 @@
+name: Bug report
+description: A command did something other than what it says it does.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not paste passwords, camera UIDs, or full config files.
+        Redact them — a UID identifies a specific physical device.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `reolink-cli --version`
+      placeholder: 0.10.0 (external · LAN-only)
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Platform
+      options: [macOS arm64, Linux x86_64, Linux arm64, Windows x86_64]
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Camera model and firmware
+      description: From `reolink-cli --camera <name> info`
+      placeholder: RLC-810A · v3.1.0.2347
+  - type: textarea
+    id: command
+    attributes:
+      label: Command you ran
+      description: With credentials removed.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Prefer `--output json`. Redact any password or UID.
+      render: shell

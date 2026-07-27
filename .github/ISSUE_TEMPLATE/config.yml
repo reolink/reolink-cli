@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://support.reolink.com
+    about: Do not open a public issue. Report privately — see SECURITY.md.
+  - name: Camera or account help (not this tool)
+    url: https://support.reolink.com
+    about: Firmware, warranty, app or account questions belong with Reolink support.

@@ -1,0 +1,20 @@
+name: Feature request
+description: A camera capability this tool cannot reach yet.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      description: Describe the outcome you want, not the API you think it needs.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you do it today?
+      description: The Reolink app, a browser, a script, or not at all.
+  - type: input
+    id: model
+    attributes:
+      label: Camera models this applies to

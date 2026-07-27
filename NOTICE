@@ -1,0 +1,8 @@
+reolink-cli
+Copyright 2026 Reolink
+
+This product includes software developed by Reolink.
+The skill, plugin manifests, and docs in this repository are licensed under
+the Apache License, Version 2.0 (see LICENSE). The prebuilt reolink-cli
+binaries distributed via GitHub Releases are proprietary and governed by a
+separate EULA bundled with each release archive.

@@ -1,0 +1,32 @@
+{
+  "name": "reolink-cli",
+  "version": "0.10.0",
+  "description": "Plugin for operating Reolink cameras through the local CLI.",
+  "author": {
+    "name": "Reolink"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "reolink",
+    "camera",
+    "cli"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Reolink CLI",
+    "shortDescription": "Discover, inspect, configure, preview, and control Reolink cameras locally.",
+    "longDescription": "Use the local Rust CLI to discover, log in to, inspect, configure, preview, and control Reolink cameras.",
+    "developerName": "Reolink",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Discover nearby Reolink cameras and tell me which host or UID to use.",
+      "Log in to my configured Reolink camera and summarize model, firmware, and capabilities.",
+      "Capture a preview or move PTZ on the configured camera."
+    ],
+    "brandColor": "#2350E1"
+  }
+}

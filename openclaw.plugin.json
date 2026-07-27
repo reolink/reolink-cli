@@ -1,0 +1,44 @@
+{
+  "id": "reolink-cli",
+  "name": "Reolink CLI",
+  "description": "Operate Reolink cameras locally via reolink-cli: discover, login, inspect, configure, preview, snapshot, and control PTZ/light/audio/detection/recording.",
+  "version": "0.10.0",
+  "author": {
+    "name": "Reolink"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "reolink",
+    "camera",
+    "cli",
+    "ptz",
+    "onvif"
+  ],
+  "skills": [
+    "./skills/reolink-cli"
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "gatewayAddr": {
+        "type": "string",
+        "description": "Gateway address (default: 127.0.0.1:9000)"
+      },
+      "installPrefix": {
+        "type": "string",
+        "description": "Binary install prefix (default: ~/.local)"
+      }
+    }
+  },
+  "uiHints": {
+    "gatewayAddr": {
+      "label": "Gateway address",
+      "placeholder": "127.0.0.1:9000"
+    },
+    "installPrefix": {
+      "label": "Install prefix",
+      "placeholder": "~/.local"
+    }
+  }
+}

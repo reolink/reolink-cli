@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "reolink": {
+      "command": "reolink-cli",
+      "args": [
+        "mcp-server"
+      ],
+      "env": {
+        "REOLINK_GATEWAY_ADDR": "${REOLINK_GATEWAY_ADDR}",
+        "REOLINK_HOST": "${REOLINK_HOST}",
+        "REOLINK_UID": "${REOLINK_UID}",
+        "REOLINK_ALIAS": "${REOLINK_ALIAS}",
+        "REOLINK_USER": "${REOLINK_USER}",
+        "REOLINK_PASSWORD": "${REOLINK_PASSWORD}",
+        "REOLINK_CONFIG_FILE": "${REOLINK_CONFIG_FILE}",
+        "REOLINK_ALIASES_FILE": "${REOLINK_ALIASES_FILE}",
+        "REOLINK_CHANNEL": "${REOLINK_CHANNEL}",
+        "REOLINK_PROTOCOL": "${REOLINK_PROTOCOL}"
+      }
+    }
+  }
+}
