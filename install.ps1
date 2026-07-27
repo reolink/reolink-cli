@@ -19,7 +19,10 @@ $rel = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$R
 $tag = $rel.tag_name
 if (-not $tag) { throw "could not resolve the latest release (public repo? set GITHUB_TOKEN if private)" }
 $ver   = $tag.TrimStart('v')
-$asset = "reolink-cli-$ver-windows-x86_64.zip"
+# Release archives carry the build flavour in the name so internal (Song P2P)
+# and customer (LAN-only) builds can never be mistaken for one another. Only
+# the external flavour is published here.
+$asset = "reolink-cli-$ver-external-windows-x86_64.zip"
 
 $tmp = Join-Path $env:TEMP ("reolink-install-" + [System.Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
