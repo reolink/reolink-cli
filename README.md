@@ -212,7 +212,12 @@ Prebuilt binaries are published on each [Release](https://github.com/reolink/reo
 
 - macOS arm64 (Apple Silicon)
 - Linux x86_64
+- Linux arm64
 - Windows x86_64
+
+`self-update` covers macOS and Linux. On Windows it exits with the download
+link instead: the archive is a `.zip`, and a running `.exe` cannot be replaced
+in place — upgrade by extracting the new archive and running `install.ps1`.
 
 `preview play` expects `ffplay` on `PATH` (or pass `--player`, or set
 `REOLINK_PLAYER`).
