@@ -148,7 +148,7 @@ Pass `alias`, `host`, or `uid` per tool call to target a specific camera; the se
 
 **Other safety rules** (kept verbatim — these break things if violated):
 
-- **Target selectors are global options** (pre-subcommand). **Forbidden** positional. Priority: `--camera` > `--host` > `--uid` > env. Batch: `--tag`, `--cameraes A,B`, `--all-devices`. **Must** pass `--channel N` for NVR.
+- **Target selectors are global options** (pre-subcommand). **Forbidden** positional. Priority: `--camera` > `--host` > `--uid` > env. Batch: `--tag`, `--cameras A,B`, `--all-devices`. **Must** pass `--channel N` for NVR.
 - **Credential safety**: **Forbidden** `--password PLAIN` on argv. **Must** use `--camera <name>` (from `aliases.toml` 0600), `REOLINK_PASSWORD` env, or `--password-stdin`. If no camera registered and op isn't trivially read-only, ask user to run `device add` first.
 - **Stored passwords are encrypted** (`RLENC1:…`, AES-256-GCM) with the key in `credentials.key` next to `aliases.toml`; a plaintext config is converted automatically on first use. Do **not** try to read a password out of `aliases.toml` — it is ciphertext, and there is no command that reveals it. Backing up or moving a config means copying **both** files; with only one of them the passwords are unrecoverable and must be re-entered via `device update <camera> --password-stdin`. If a command reports a password that "cannot be decrypted", the key file is missing or mismatched — that is not a wrong-password problem, so do not retry with guesses.
 - **Pre-write read**: **Must** `get` current value before any write that's NOT covered by an `apply` recipe; confirm side effects from the table below; verify NVR channel.
@@ -158,7 +158,7 @@ Pass `alias`, `host`, or `uid` per tool call to target a specific camera; the se
 
 ## Global Options
 
-`--host`/`--uid`/`--camera`/`--cameraes A,B`/`--tag`/`--all-devices`, `--user`/`--password`/`--channel`, `--protocol auto`, `--output json|text`, `--gateway-addr HOST:PORT`, `--config-file`/`--cameraes-file`. Env equivalents: `REOLINK_HOST/UID/ALIAS/USER/PASSWORD/CHANNEL/PROTOCOL/GATEWAY_ADDR/CONFIG_FILE/ALIASES_FILE`. Run `reolink-cli --help` or `<subcmd> --help` for exact flag shapes.
+`--host`/`--uid`/`--camera`/`--cameras A,B`/`--tag`/`--all-devices`, `--user`/`--password`/`--channel`, `--protocol auto`, `--output json|text`, `--gateway-addr HOST:PORT`, `--config-file`/`--cameras-file`. Env equivalents: `REOLINK_HOST/UID/ALIAS/USER/PASSWORD/CHANNEL/PROTOCOL/GATEWAY_ADDR/CONFIG_FILE/ALIASES_FILE`. Run `reolink-cli --help` or `<subcmd> --help` for exact flag shapes.
 
 ## Batch Operations
 
@@ -166,7 +166,7 @@ Pass `alias`, `host`, or `uid` per tool call to target a specific camera; the se
 - **Forbidden** enumerating with `--tag` then switching to `--camera` inside the same workflow.
 - Batch output has per-target `ok`; a single failure doesn't fail the batch. **Must** check `summary.failed > 0` and iterate `results[]`.
 
-**Degenerate case:** when a batch selector (`--tag X`, `--cameraes A`, `--all-devices`) resolves to *exactly one* device, the CLI emits the **single-target envelope** (`{ok, command, protocol, data}`), not the batch report. **Must** test `"summary" in response` to detect which shape you got. **Forbidden** assuming `results[]` exists.
+**Degenerate case:** when a batch selector (`--tag X`, `--cameras A`, `--all-devices`) resolves to *exactly one* device, the CLI emits the **single-target envelope** (`{ok, command, protocol, data}`), not the batch report. **Must** test `"summary" in response` to detect which shape you got. **Forbidden** assuming `results[]` exists.
 
 ## Error Recovery
 
