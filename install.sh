@@ -24,7 +24,7 @@ command -v tar  >/dev/null 2>&1 || die "tar is required"
 
 os=$(uname -s); arch=$(uname -m)
 case "$os" in
-  Darwin) os=macos ;;
+  Darwin) os=darwin ;;
   Linux)  os=linux ;;
   *) die "unsupported OS '$os' — see https://github.com/$REPO/releases" ;;
 esac
@@ -35,7 +35,7 @@ case "$arch" in
 esac
 
 # macOS ships Apple Silicon only; Intel Macs are not supported.
-if [ "$os" = macos ] && [ "$arch" = x86_64 ]; then
+if [ "$os" = darwin ] && [ "$arch" = x86_64 ]; then
   die "macOS Intel (x86_64) is not supported — Apple Silicon (arm64) only. See https://github.com/$REPO/releases"
 fi
 
@@ -49,7 +49,10 @@ tag=$(curl -fsSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
   | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
 [ -n "$tag" ] || die "could not resolve the latest release (is the repo public? set GITHUB_TOKEN if it is private)"
 ver="${tag#v}"
-asset="reolink-cli-${ver}-${os}-${arch}.tar.gz"
+# Release archives carry the build flavour in the name so internal (Song P2P)
+# and customer (LAN-only) builds can never be mistaken for one another. Only
+# the external flavour is published here.
+asset="reolink-cli-${ver}-external-${os}-${arch}.tar.gz"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT INT TERM
