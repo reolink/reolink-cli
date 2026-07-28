@@ -27,7 +27,7 @@ tar -xzf "$tmp"/*.tar.gz -C "$tmp"
 cp "$tmp"/*/bin/reolink-cli "$tmp"/*/bin/reolink-gateway "$BIN/"
 chmod +x "$BIN/reolink-cli" "$BIN/reolink-gateway"; rm -rf "$tmp"
 case ":$PATH:" in *":$BIN:"*) ;; *) echo "NOTE: add $BIN to your PATH";; esac
-reolink-cli --version   # → 0.10.0 (external · LAN-only)
+reolink-cli --version   # → 0.10.1 (external · LAN-only)
 ```
 
 Windows: download the `...-windows-x86_64.zip` from the Releases page and put
