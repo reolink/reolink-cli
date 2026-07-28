@@ -4,6 +4,33 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.10.1] — 2026-07-27
+
+### Fixed
+
+- **`self-update` could never download anything.** It asked for
+  `reolink-cli-<ver>-macos-arm64.tar.gz` while the published archive is
+  `reolink-cli-<ver>-external-darwin-arm64.tar.gz` — all three supported
+  platforms were wrong. The archives had gained an `-external` flavour segment
+  so an internal build can never be mistaken for the customer build, and the
+  macOS token had moved from `macos` to `darwin`; neither reached the updater.
+  It stayed invisible because the download only happens when an update exists —
+  running it on the current version returns `already up to date` and never gets
+  that far.
+
+  Windows remains unsupported by `self-update` and now says so with the download
+  link: that archive is a `.zip` while the updater only untars, and a running
+  `.exe` cannot be replaced in place. Upgrade there by extracting the new
+  archive and running `install.ps1`.
+
+- **The agent skill misspelled `--cameras` as `--cameraes`.** A copied command
+  failed with an unrecognized-argument error.
+
+### Build
+
+- The packaging script now refuses to produce an archive whose filename the
+  updater cannot reconstruct, so this class of drift cannot ship again.
+
 ## [0.10.0] — 2026-07-25
 
 Stored camera passwords are no longer kept in plaintext.
