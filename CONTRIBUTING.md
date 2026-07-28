@@ -27,8 +27,18 @@ you want. We implement it upstream and it arrives in the next release.
   the docs that had never been executed — a flag that did not exist, a
   subcommand that had been renamed. If you touch an example, run it and paste
   the output in the PR.
-- **Keep manifests in step.** The version appears in several manifests; they
-  must agree. Do not hand-edit a version to something no release uses.
+- **Keep manifests in step.** The version appears in nine places — seven
+  manifests, the README badge, and `skills/reolink-cli/references/setup.md` —
+  plus a CHANGELOG heading. They must all agree with the published release. Do
+  not hand-edit a version to something no release uses. Check with:
+
+  ```bash
+  ./scripts/check-version-sync.sh
+  ```
+
+  Doing this by hand has failed twice: once the plugin manifests were left
+  behind, once the whole repository stayed a version back while the release was
+  already published, so readers saw a stale badge over a newer download.
 - **Never commit real data.** No camera passwords, tokens, UIDs, serial
   numbers, private IPs, or footage — in code, docs, examples or screenshots.
   Use placeholders such as `192.168.1.42` and `<camera-password>`.
