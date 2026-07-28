@@ -282,13 +282,6 @@ you own or are authorised to administer.
 
 ## Installers
 
-> **While this repository is private**, the one-line installers and the release
-> download URLs return 404 for anonymous callers — GitHub does not serve private
-> content that way. Until it is made public, export a `GITHUB_TOKEN` with access
-> to this repository before running an installer, or fetch the archive with
-> `gh release download`.
-
-
 `install.sh` and `install.ps1` fetch and run executables, so here is exactly
 what they do:
 

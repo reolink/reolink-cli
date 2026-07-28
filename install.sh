@@ -8,8 +8,6 @@
 # `npx skills add reolink/reolink-cli` instead (it fetches the binary for you).
 #
 # Env overrides: REOLINK_REPO=owner/repo, REOLINK_PREFIX=/install/root.
-# (While the repo is private, GitHub won't serve release assets over the public
-#  download URL — test with `gh release download` until it is public.)
 set -eu
 
 REPO="${REOLINK_REPO:-reolink/reolink-cli}"
