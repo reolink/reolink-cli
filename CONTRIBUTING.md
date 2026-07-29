@@ -30,15 +30,22 @@ you want. We implement it upstream and it arrives in the next release.
 - **Keep manifests in step.** The version appears in nine places — seven
   manifests, the README badge, and `skills/reolink-cli/references/setup.md` —
   plus a CHANGELOG heading. They must all agree with the published release. Do
-  not hand-edit a version to something no release uses. Check with:
+  not hand-edit a version to something no release uses.
 
   ```bash
-  ./scripts/check-version-sync.sh
+  ./scripts/check-version-sync.sh              # do they agree with the latest release?
+  ./scripts/check-version-sync.sh --set 0.11.0 # rewrite all nine, then check
   ```
 
-  Doing this by hand has failed twice: once the plugin manifests were left
+  Doing this by hand has failed three times: once the plugin manifests were left
   behind, once the whole repository stayed a version back while the release was
-  already published, so readers saw a stale badge over a newer download.
+  already published — readers saw a stale badge over a newer download — and once
+  more while cutting 0.10.3. Use `--set`; it writes every location from one list
+  and then checks its own work, so a location it could not match is reported
+  rather than skipped.
+
+  `--set` does not touch `CHANGELOG.md`. That entry needs release notes a script
+  cannot write, so the check reports it as missing until you write it.
 - **Never commit real data.** No camera passwords, tokens, UIDs, serial
   numbers, private IPs, or footage — in code, docs, examples or screenshots.
   Use placeholders such as `192.168.1.42` and `<camera-password>`.
