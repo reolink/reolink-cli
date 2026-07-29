@@ -4,6 +4,41 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.10.3] — 2026-07-30
+
+Came from an issue opened here.
+
+### Fixed
+
+- **`device expand` failed on an NVR that declines `GetSupport`** (#25). An
+  RLN8-410 on firmware v3.6.5.562 answers cmd 199 with code 300, which aborted
+  the whole command.
+
+  Following that report turned up a second, quieter bug: **even when 199
+  succeeded, the channels written were wrong.** `channelNum` is a *count*, and
+  the code registered `0..count`. The reporter's four cameras sit on channels
+  1, 9, 10 and 11 — so on a cooperative NVR it would have created four entries
+  pointing at slots 0–3, three of them empty.
+
+  `expand` now asks 199 for an upper bound when it answers, ignores it when it
+  does not, then probes each channel and registers only the ones that answer,
+  with their real channel number. The probe uses cmd 44 (OSD get), which is
+  per-channel and refused on an empty slot.
+
+  The probe runs on **one** connection. The channel travels in each request's
+  extension XML rather than in the session, so a single connection can ask
+  about every channel. Opening a session per channel would hold one TCP
+  connection per candidate — the gateway pools sessions with a 300-second TTL
+  and reaps them lazily — and an NVR that caps concurrent connections would
+  start refusing partway through, silently reporting the rest as empty. That
+  would produce a short, confident, wrong channel list: worse than the hard
+  failure it replaced. Measured after scanning 20 channels: 1 established
+  connection to the device.
+
+  Not verified: no RLN8-410 here. The single-connection property and the
+  single-camera refusal are verified on hardware; the non-contiguous channel
+  path is sound in logic and untested in fact.
+
 ## [0.10.2] — 2026-07-29
 
 Both changes came from issues opened here.

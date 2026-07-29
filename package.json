@@ -1,6 +1,6 @@
 {
   "name": "reolink-cli",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "type": "module",
   "description": "Operate Reolink cameras locally via reolink-cli.",
   "main": ".opencode/plugins/reolink-cli.js",
