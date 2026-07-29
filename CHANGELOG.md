@@ -4,6 +4,54 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.10.4] — 2026-07-30
+
+Four fixes found by installing 0.10.3 and running it against real hardware. The
+first is 0.10.3's own.
+
+### Fixed
+
+- **`device expand` named child cameras after the wrong channel.** The `channel`
+  field was correct; the names were not. Defaults and descriptions used the
+  position in the discovered list rather than the real channel number. On the
+  NVR from #25 — cameras on channels 1, 9, 10 and 11 — that produces `nvr-ch0`
+  through `nvr-ch3`, four aliases each claiming a channel it does not connect to.
+
+  Nothing fails loudly, which is what makes it bad: you find out by wondering
+  why `nvr-ch1` shows the wrong camera. It was 0.10.3's fix left half-done — the
+  probe learned the real channel numbers and the naming never used them.
+
+  Non-contiguous-channel hardware is not something I have, so this is pinned by
+  three unit tests rather than one hand-check.
+
+- **`reolink-gateway --help`, `--version` and `--addr` all failed with
+  "invalid socket address".** The binary took `args[1]` as the listen address,
+  so any flag was handed to `bind()` and the error pointed at something entirely
+  unrelated to the real problem. Unrecognised arguments are now rejected by name;
+  `--addr` and the bare positional form both work (`reolink-cli gateway start`
+  uses the positional one). `reolink-gateway --version` also reports the build
+  flavor now, the same way the CLI does.
+
+- **The CLI could hang forever talking to the gateway.** If something occupies
+  the gateway port and accepts the connection without answering, the control
+  channel had no timeout: no output, no exit, indefinitely — and an AI agent
+  driving the CLI wedges with it. Docker and OrbStack both listen on `:9000` by
+  default, the port this tool documents, so it is easy to land in. There is now
+  a 60-second bound on the control channel with an error naming the likely
+  cause. Preview and VOD share the underlying read path and stay unbounded on
+  purpose.
+
+- **The channel scan had no overall budget.** Per-request I/O timeouts (10s) add
+  up once a device stops answering mid-scan. The scan is capped at 30 seconds
+  total and reports how far it got (`scanned` / `requested`), so a truncated
+  scan reads as "checked 6 of 20" instead of looking like a complete answer.
+
+### Added
+
+- **`./scripts/check-version-sync.sh --set <version>`** rewrites all nine version
+  locations from one list, then re-checks its own work so a location whose
+  pattern drifted is reported rather than skipped (#7, #27).
+
 ## [0.10.3] — 2026-07-30
 
 Came from an issue opened here.
