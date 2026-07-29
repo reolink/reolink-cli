@@ -249,9 +249,10 @@ Patch release. Fixes found in a pre-release audit, verified on real hardware.
   address works out of the box.
 - **Prebuilt binaries** — macOS arm64, Linux x86_64, Windows x86_64.
 
-## [0.6.0] — unreleased
+## [0.6.0] — not published
 
-Initial public distribution.
+Prepared as the first public distribution but never released here; the
+first published release was 0.7.0. Kept for the record of what it covered.
 
 - LAN-only camera operation: discover, login, info, snapshot, live preview, PTZ,
   IR / spotlight / LEDs, image tuning, OSD, motion + AI detection, recording +
