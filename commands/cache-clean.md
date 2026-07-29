@@ -1,9 +1,13 @@
 ---
-description: Preview + clean artifacts under ~/.cache/reolink older than 7 days
+description: Preview + clean cached artifacts older than 7 days
 argument-hint: [--older-than 30d]
 ---
 
-Clean old cache entries under `~/.cache/reolink/` (snapshots, TTS PCM clips, etc.).
+Clean old cache entries (snapshots, TTS PCM clips, etc.). The cache lives in the
+platform cache directory — `~/.cache/reolink-cli/` on Linux,
+`~/Library/Caches/reolink-cli/` on macOS, `%LOCALAPPDATA%\reolink-cli\cache\` on
+Windows. Run `reolink-cli cache status` to see the resolved path rather than
+assuming one.
 
 **Step 1 — preview (dry-run, always first):**
 

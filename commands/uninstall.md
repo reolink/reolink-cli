@@ -31,7 +31,7 @@ The release tarball ships its own `uninstall.sh` / `uninstall.ps1`. Run them fro
 **Windows — purge:**
 
 ```powershell
-$env:REOLINK_PURGE = "1"; .\uninstall.ps1
+.\uninstall.ps1 --purge
 ```
 
 If the user no longer has the tarball on disk, falling back to manual removal works too:

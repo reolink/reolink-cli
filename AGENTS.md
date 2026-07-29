@@ -189,7 +189,7 @@ reolink-cli cache status --output json 2>/dev/null \
 
 **Read `.data.commands`** from the `features` output before dispatching any subcommand. If a command in SKILL.md is missing from that list, the installed binary is older than the skill and the right response is to tell the user to upgrade by re-extracting their newest release tarball over the old one.
 
-If the binary version on disk and the version named in `SKILL.md` (`version:` frontmatter, see the local skill file) disagree, tell the user — the skill might be describing capabilities the binary doesn't have yet (or vice versa). Both should match the version printed by `reolink-cli --version`.
+The skill carries no version of its own — it is distributed with the release archive, so its version is that release. Compare `reolink-cli --version` against the latest release instead. Both should match the version printed by `reolink-cli --version`.
 
 ---
 
