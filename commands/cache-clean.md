@@ -1,9 +1,9 @@
 ---
-description: Preview + clean artifacts under ~/.cache/reolink older than 7 days
+description: Preview + clean artifacts under ~/.cache/reolink-cli older than 7 days
 argument-hint: [--older-than 30d]
 ---
 
-Clean old cache entries under `~/.cache/reolink/` (snapshots, TTS PCM clips, etc.).
+Clean old cache entries under `~/.cache/reolink-cli/` (snapshots, TTS PCM clips, etc.).
 
 **Step 1 — preview (dry-run, always first):**
 
