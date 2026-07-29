@@ -66,8 +66,17 @@ try {
   Get-Process -Name reolink-gateway,reolink-cli -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -like (Join-Path $Bin '*') } |
     ForEach-Object { Write-Host "stopping $($_.Name) (pid $($_.Id))"; Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
-  Get-ChildItem -Path $tmp -Recurse -Filter 'reolink-cli.exe'     | Select-Object -First 1 | ForEach-Object { Copy-Item $_.FullName (Join-Path $Bin 'reolink-cli.exe') -Force }
-  Get-ChildItem -Path $tmp -Recurse -Filter 'reolink-gateway.exe' | Select-Object -First 1 | ForEach-Object { Copy-Item $_.FullName (Join-Path $Bin 'reolink-gateway.exe') -Force }
+  # Resolve each binary first and fail by name when it is absent. Piping
+  # Get-ChildItem straight into Copy-Item silently does nothing on an empty
+  # pipeline, so a malformed archive used to install nothing, exit 0, and only
+  # surface later as `config init` failing to find a file it never mentions.
+  # install.sh has always failed loudly here; this is the missing half.
+  foreach ($exe in 'reolink-cli.exe', 'reolink-gateway.exe') {
+    $src = Get-ChildItem -Path $tmp -Recurse -Filter $exe -ErrorAction SilentlyContinue |
+           Select-Object -First 1
+    if (-not $src) { throw "$exe not found in the archive" }
+    Copy-Item $src.FullName (Join-Path $Bin $exe) -Force
+  }
 } finally {
   Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 }
