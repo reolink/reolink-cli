@@ -31,14 +31,15 @@ The release tarball ships its own `uninstall.sh` / `uninstall.ps1`. Run them fro
 **Windows — purge:**
 
 ```powershell
-$env:REOLINK_PURGE = "1"; .\uninstall.ps1
+.\uninstall.ps1 --purge
 ```
 
 If the user no longer has the tarball on disk, falling back to manual removal works too:
 
 ```bash
-# macOS / Linux
-pkill -f reolink-gateway
+# macOS / Linux — kill only the gateway from this install prefix,
+# never gateways belonging to another installation
+pkill -f "$HOME/.local/bin/reolink-gateway"
 rm -f ~/.local/bin/reolink-cli ~/.local/bin/reolink-gateway
 # (purge only)
 rm -rf ~/.config/reolink-cli ~/.cache/reolink-cli ~/.local/state/reolink-cli
