@@ -66,8 +66,11 @@ try {
   Get-Process -Name reolink-gateway,reolink-cli -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -like (Join-Path $Bin '*') } |
     ForEach-Object { Write-Host "stopping $($_.Name) (pid $($_.Id))"; Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
-  Get-ChildItem -Path $tmp -Recurse -Filter 'reolink-cli.exe'     | Select-Object -First 1 | ForEach-Object { Copy-Item $_.FullName (Join-Path $Bin 'reolink-cli.exe') -Force }
-  Get-ChildItem -Path $tmp -Recurse -Filter 'reolink-gateway.exe' | Select-Object -First 1 | ForEach-Object { Copy-Item $_.FullName (Join-Path $Bin 'reolink-gateway.exe') -Force }
+  foreach ($b in 'reolink-cli.exe', 'reolink-gateway.exe') {
+    $src = Get-ChildItem -Path $tmp -Recurse -Filter $b | Select-Object -First 1
+    if (-not $src) { throw "$b not found in the archive" }
+    Copy-Item $src.FullName (Join-Path $Bin $b) -Force
+  }
 } finally {
   Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 }
