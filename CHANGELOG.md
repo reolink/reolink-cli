@@ -4,6 +4,41 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.10.2] — 2026-07-29
+
+Both changes came from issues opened here.
+
+### Added
+
+- **`config get performance`** — live device load: `cpuUsedPercent`, `codeRate`,
+  `netDataRate` (#9). Verified on hardware: an E1 Outdoor reports 60% CPU.
+
+  Not every model implements it. Those answer with a device-level rejection
+  rather than a fabricated zero — a camera reported as 0% busy when it never
+  said so would be worse than an error. `codeRate` reads 0 on an idle camera and
+  only becomes meaningful while a stream is running; it is reported rather than
+  hidden, so you can tell "idle" from "not reported".
+
+  This is distinct from `benchmark`, which times the **client** round trip.
+
+### Fixed
+
+- **Protocol-detection failures blamed the host when the host was fine** (#10).
+  An NVR channel failed with `unable to detect protocol — device unreachable, or
+  not a Reolink v20/v30 device` while another channel on the same host worked in
+  the same session, sending the reporter to check VLAN routing and firewall
+  rules.
+
+  Each channel opens its own session, so the probe runs **per channel** —
+  blaming the host is wrong by construction whenever another channel is working.
+  The probe also collapsed four outcomes into one: connect timed out, connect
+  refused, **connected but no answer**, and unrecognised magic. That third case
+  matters: a device that is up but declining an additional connection looks
+  identical on the wire to one that is unreachable.
+
+  The message now names the channel and the actual failure, and points at
+  `--protocol v20` to skip the probe.
+
 ## [0.10.1] — 2026-07-27
 
 ### Fixed
