@@ -29,9 +29,9 @@ reolink-cli --camera front-door --gateway-addr 127.0.0.1:9000 record config get
 
 ## Rules
 
-- `--week-table` is a **7-bit bitmap, Mon=bit0 … Sun=bit6**. Common values:
-  - Weekdays (Mon–Fri): `31`
-  - Mon–Sat: `63`
+- `--week-table` is a **7-bit bitmap, Sun=bit0 … Sat=bit6** (matches `--help`). Common values:
+  - Weekdays (Mon–Fri): `62`
+  - Mon–Sat: `126`
   - All week: `127`
 - **Must** read current (`record schedule get`) before overwriting — SET replaces the full schedule object.
 - **Must** warn before `record schedule set --disable` — no new recordings will be written until re-enabled.
@@ -53,7 +53,7 @@ reolink-cli --camera front-door record schedule set --disable
 ## Weekly window (Mon–Sat 08:00–22:00)
 
 ```bash
-reolink-cli --camera front-door record schedule set --enable --plan-type weekly --week-table 63 \
+reolink-cli --camera front-door record schedule set --enable --plan-type weekly --week-table 126 \
   --start-hour 8 --start-min 0 --end-hour 22 --end-min 0
 ```
 
