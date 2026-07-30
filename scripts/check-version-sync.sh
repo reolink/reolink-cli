@@ -3,6 +3,7 @@
 #
 #   ./scripts/check-version-sync.sh              # compare against the latest release
 #   ./scripts/check-version-sync.sh 0.10.1       # compare against a version you name
+#   ./scripts/check-version-sync.sh --self       # only: do the nine agree with each other?
 #   ./scripts/check-version-sync.sh --set 0.11.0 # rewrite all of them, then check
 #
 # Exits non-zero and lists every file that disagrees.
@@ -31,14 +32,29 @@ usage() {
 
 mode=check
 want=""
+self=0
 for arg in "$@"; do
   case "$arg" in
     --set)     mode=set ;;
+    --self)    self=1 ;;
     -h|--help) usage 0 ;;
     -*)        echo "unknown option: $arg" >&2; usage 2 ;;
     *)         want="$arg" ;;
   esac
 done
+
+# --self asks only "do these nine agree with each other?", taking package.json as
+# the reference. It exists for pull requests: a branch may legitimately carry a
+# version no release uses yet, but a hand-edit that updates eight of nine files
+# is never legitimate. Comparing against the published release is the separate
+# check, and it belongs on `release: published` and a schedule.
+if [ "$self" -eq 1 ]; then
+  [ -z "$want" ] || { echo "--self takes no version argument" >&2; exit 2; }
+  [ "$mode" = check ] || { echo "--self cannot be combined with --set" >&2; exit 2; }
+  want=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([0-9][^"]*\)".*/\1/p' package.json | head -n1)
+  [ -n "$want" ] || { echo "could not read a version from package.json" >&2; exit 2; }
+  echo "checking internal agreement against package.json: $want"
+fi
 
 # --set never resolves the version from the published release: you run it while
 # preparing a version that is not published yet, and silently stamping whatever

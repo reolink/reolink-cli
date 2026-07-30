@@ -4,6 +4,52 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.10.5] — 2026-07-30
+
+### Fixed
+
+- **`setup --uninstall` did not stop your own gateway on macOS**, then deleted
+  the binary out from under it, leaving a process running a file that no longer
+  exists.
+
+  This came out of a contributor report (#29, #31) about the docs' manual
+  `pkill -f reolink-gateway` fallback matching every install on the machine. The
+  same mistake was one layer down in the code, and worse there:
+  `process_exe_path` used `ps -p <pid> -o comm=` on non-Linux platforms under a
+  comment asserting that prints the executable's full path. It does not — it
+  echoes argv[0], so a gateway started as `reolink-gateway` from `PATH` reported
+  a bare name, which the ownership check rejects as non-absolute. That comment
+  had never been executed.
+
+  The question is now asked backwards: `lsof -t -a -d txt <prefix>/bin/reolink-gateway`
+  lists the processes whose *executing image* is that file, which avoids argv
+  entirely. `-d txt` restricts it to the image, so a process merely reading the
+  binary is not a candidate. Linux keeps `/proc/<pid>/exe`.
+
+  Verified with two gateways from different prefixes, one started by bare name:
+  ours was stopped, the second install was left alone.
+
+### Verified
+
+- **`device expand` now has hardware behind it on the firmware from #25.** An
+  RLN4E running v3.6.5.562 — the same version as the RLN8-410 in that report —
+  confirms the original bug (cmd 199 answers code 300) and the fix: the channel
+  with a camera answers, empty channels are refused, and scanning 20 channels
+  takes 0.9 seconds.
+
+  The channel field genuinely selects the channel, which is worth stating on its
+  own: a protocol that ignored it would look identical on a one-camera device,
+  with every channel returning channel 0's data.
+
+  Correction to a note in #25 along the way: on an NVR with no cameras attached,
+  cmd 44 is refused on *every* channel, which briefly read as the firmware not
+  implementing it. It does. The refusal means "no camera on that channel" —
+  exactly the signal the probe wants.
+
+  Non-contiguous numbering is covered by an integration test reproducing the
+  reporter's device. Reverting the naming to the 0.10.3 behaviour makes it fail,
+  which is the only reason to believe it guards anything.
+
 ## [0.10.4] — 2026-07-30
 
 Four fixes found by installing 0.10.3 and running it against real hardware. The
