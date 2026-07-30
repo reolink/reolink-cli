@@ -38,6 +38,11 @@ you want. We implement it upstream and it arrives in the next release.
   ./scripts/check-version-sync.sh --set 0.11.0 # rewrite all nine, then check
   ```
 
+  CI runs `--self` on every pull request, so a hand-edit that updates eight of
+  the nine files fails there. It runs the release comparison on `release:
+  published` and daily — that one catches what a local script cannot, where a
+  release ships and nobody touches this repository at all.
+
   Doing this by hand has failed three times: once the plugin manifests were left
   behind, once the whole repository stayed a version back while the release was
   already published — readers saw a stale badge over a newer download — and once

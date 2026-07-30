@@ -1,0 +1,65 @@
+# The version appears in nine places in this repository plus a CHANGELOG
+# heading, and keeping them in step by hand has failed three times — once
+# leaving the plugin manifests behind, once leaving the whole repository a
+# version back while the release was already published (readers saw a 0.10.0
+# badge over a 0.10.1 download), and once more while cutting 0.10.3.
+#
+# `scripts/check-version-sync.sh` catches all of that, but only when somebody
+# runs it. The failure this file exists for is the one where nobody does:
+# a release ships and this repository is never touched.
+#
+# Two different questions, so two different triggers:
+#
+#   --self   do the nine agree with each other?  → every PR and push.
+#            A branch may legitimately carry a version no release uses yet, so
+#            this deliberately does not look at the published release.
+#
+#   (none)   do they agree with the latest published release?  → when a release
+#            is published, on a daily schedule, and on demand. This is the one
+#            that catches "released and forgot".
+#
+# Both call the same script. The workflow stays a thin caller so there is never
+# a second copy of the file list to drift — that duplication is the same bug
+# class the script exists to prevent.
+name: version-sync
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  schedule:
+    # Daily. A release published without syncing this repository is a stale
+    # badge over a newer download; a day is a reasonable ceiling on how long
+    # that can go unnoticed.
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+# Read-only. This job reports; it never writes to the repository, and the
+# scheduled run reaches the public GitHub API without any credential.
+permissions:
+  contents: read
+
+jobs:
+  agree-with-each-other:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/check-version-sync.sh --self
+
+  agree-with-latest-release:
+    if: github.event_name != 'pull_request' && github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      # A release's assets appear a moment after the release event fires, and
+      # the sync PR for a release lands after the release itself. Give the
+      # publish flow room rather than reporting a mismatch that fixes itself.
+      - name: Let a just-published release settle
+        if: github.event_name == 'release'
+        run: sleep 300
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - run: ./scripts/check-version-sync.sh
