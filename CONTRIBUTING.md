@@ -34,6 +34,7 @@ you want. We implement it upstream and it arrives in the next release.
 
   ```bash
   ./scripts/check-version-sync.sh              # do they agree with the latest release?
+  ./scripts/check-version-sync.sh --self       # do they agree with each other?
   ./scripts/check-version-sync.sh --set 0.11.0 # rewrite all nine, then check
   ```
 

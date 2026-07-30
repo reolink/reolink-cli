@@ -1,6 +1,6 @@
 {
   "name": "reolink-cli",
-  "version": "0.10.4",
+  "version": "0.10.5",
   "description": "Plugin for operating Reolink cameras through the local CLI.",
   "author": {
     "name": "Reolink"
