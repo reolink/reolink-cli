@@ -27,19 +27,21 @@ you want. We implement it upstream and it arrives in the next release.
   the docs that had never been executed — a flag that did not exist, a
   subcommand that had been renamed. If you touch an example, run it and paste
   the output in the PR.
-- **Keep manifests in step.** The version appears in nine places — seven
-  manifests, the README badge, and `skills/reolink-cli/references/setup.md` —
-  plus a CHANGELOG heading. They must all agree with the published release. Do
+- **Keep manifests in step.** The version appears in seven manifests, plus a
+  CHANGELOG heading and the release's `checksums/<tag>.sha256`. (It was nine:
+  the README badge is a live shields.io release lookup now, and the skill's
+  example output no longer names a version — copies that cannot go stale
+  beat copies that are checked.) They must all agree with the published release. Do
   not hand-edit a version to something no release uses.
 
   ```bash
   ./scripts/check-version-sync.sh              # do they agree with the latest release?
   ./scripts/check-version-sync.sh --self       # do they agree with each other?
-  ./scripts/check-version-sync.sh --set 0.11.0 # rewrite all nine, then check
+  ./scripts/check-version-sync.sh --set 0.11.0 # rewrite all seven, then check
   ```
 
-  CI runs `--self` on every pull request, so a hand-edit that updates eight of
-  the nine files fails there. It runs the release comparison on `release:
+  CI runs `--self` on every pull request, so a hand-edit that misses one of
+  the manifests fails there. It runs the release comparison on `release:
   published` and daily — that one catches what a local script cannot, where a
   release ships and nobody touches this repository at all.
 
@@ -48,7 +50,8 @@ you want. We implement it upstream and it arrives in the next release.
   already published — readers saw a stale badge over a newer download — and once
   more while cutting 0.10.3. Use `--set`; it writes every location from one list
   and then checks its own work, so a location it could not match is reported
-  rather than skipped.
+  rather than skipped. That history is also why the badge stopped being a copy
+  at all.
 
   `--set` does not touch `CHANGELOG.md`. That entry needs release notes a script
   cannot write, so the check reports it as missing until you write it.
