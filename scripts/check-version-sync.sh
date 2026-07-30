@@ -3,12 +3,14 @@
 #
 #   ./scripts/check-version-sync.sh              # compare against the latest release
 #   ./scripts/check-version-sync.sh 0.10.1       # compare against a version you name
-#   ./scripts/check-version-sync.sh --self       # only: do the nine agree with each other?
+#   ./scripts/check-version-sync.sh --self       # only: do the manifests agree with each other?
 #   ./scripts/check-version-sync.sh --set 0.11.0 # rewrite all of them, then check
 #
 # Exits non-zero and lists every file that disagrees.
 #
-# Why this exists: the version appears in nine places, and keeping them in step
+# Why this exists: the version appears in seven manifests (it was nine — the
+# README badge is a live shields.io lookup now, and the skill's example output
+# no longer names a version), and keeping them in step
 # by hand has failed three times — once leaving the plugin manifests behind, once
 # leaving this entire repository on the previous version while the release was
 # already published, and once more while cutting 0.10.3. Readers saw a 0.10.0
@@ -43,10 +45,13 @@ for arg in "$@"; do
   esac
 done
 
-# --self asks only "do these nine agree with each other?", taking package.json as
-# the reference. It exists for pull requests: a branch may legitimately carry a
-# version no release uses yet, but a hand-edit that updates eight of nine files
-# is never legitimate. Comparing against the published release is the separate
+# --self asks only "do these manifests agree with each other?", taking
+# package.json as the reference. It exists for pull requests: a branch may
+# legitimately carry a version no release uses yet, but a hand-edit that misses
+# one of the manifests is never legitimate. Note that the checksums-file check
+# below applies here too — a version bump and its checksums/<tag>.sha256 must
+# travel in the same pull request, because the installers fail closed on a
+# missing file the moment the bump reaches the default branch. Comparing against the published release is the separate
 # check, and it belongs on `release: published` and a schedule.
 if [ "$self" -eq 1 ]; then
   [ -z "$want" ] || { echo "--self takes no version argument" >&2; exit 2; }
@@ -64,7 +69,7 @@ if [ "$mode" = set ]; then
 fi
 
 # Exactly three numeric segments. A looser test accepts a typo like "0.10.3.1"
-# and --set would then stamp it into all nine files without complaint.
+# and --set would then stamp it into every manifest without complaint.
 if [ -n "$want" ]; then
   _rest=${want#*.}
   # Two dots exactly. Without this, "1.2" parses as major=1 minor=2 patch=2 —
@@ -90,11 +95,9 @@ fi
 # check and the rewrite pick it up — two lists that must agree is the same class
 # of bug this script exists to catch.
 #
-# Kinds: json   — a manifest with a "version" field (marketplace.json nests it
-#                 inside a plugin entry, so take the first match rather than
-#                 assuming a fixed depth)
-#        badge  — the README shields.io version badge
-#        setup  — the `--version` example output in the skill's setup notes
+# Kind: json — a manifest with a "version" field (marketplace.json nests it
+#              inside a plugin entry, so take the first match rather than
+#              assuming a fixed depth)
 LOCATIONS='
 package.json:json
 openclaw.plugin.json:json
@@ -103,15 +106,11 @@ gemini-extension.json:json
 .claude-plugin/marketplace.json:json
 .codex-plugin/plugin.json:json
 .cursor-plugin/plugin.json:json
-README.md:badge
-skills/reolink-cli/references/setup.md:setup
 '
 
 extract() { # file kind
   case "$2" in
     json)  sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([0-9][^"]*\)".*/\1/p' "$1" | head -n1 ;;
-    badge) sed -n 's/.*version-\([0-9][0-9.]*\)-blue.*/\1/p'                      "$1" | head -n1 ;;
-    setup) sed -n 's/.*reolink-cli --version.*# *→ *\([0-9][0-9.]*\).*/\1/p'      "$1" | head -n1 ;;
   esac
 }
 
@@ -120,8 +119,6 @@ extract() { # file kind
 rewrite() { # file kind version
   case "$2" in
     json)  sed "1,/\"version\"/s/\"version\"\([[:space:]]*\):\([[:space:]]*\)\"[0-9][^\"]*\"/\"version\"\1:\2\"$3\"/" "$1" > "$1.tmp" ;;
-    badge) sed "1,/version-[0-9]/s/version-[0-9][0-9.]*-blue/version-$3-blue/"                                        "$1" > "$1.tmp" ;;
-    setup) sed "1,/reolink-cli --version/s/\(reolink-cli --version.*# *→ *\)[0-9][0-9.]*/\1$3/"                        "$1" > "$1.tmp" ;;
   esac
   mv "$1.tmp" "$1"
 }

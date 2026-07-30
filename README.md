@@ -4,7 +4,7 @@
 
 **A local-first command-line tool for operating Reolink cameras — JSON by default, with a built-in MCP server and a cross-agent skill so AI agents drive the same core.**
 
-![version](https://img.shields.io/badge/version-0.10.5-blue)
+![release](https://img.shields.io/github/v/release/reolink/reolink-cli)
 ![platform](https://img.shields.io/badge/platform-macOS%20·%20Linux%20·%20Windows-lightgrey)
 ![build](https://img.shields.io/badge/build-external%20·%20LAN--only-green)
 
