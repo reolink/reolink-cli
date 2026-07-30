@@ -9,13 +9,15 @@ Motion (`detect motion`) and per-type AI (`detect ai`). AI types: `person | vehi
 - **Must** run `device inventory --capabilities` before scripting `detect ai --type X` across multiple devices — AI-type support varies per model (battery cams may only support `person`).
 - **Must** warn the user before `detect motion|ai set --disable` — disabling stops push notifications, white-LED alarm trigger, and md-rule recording downstream.
 - **Forbidden** asserting a device supports a specific AI type without capability confirmation.
-- `--sensitivity` is 0–100 (100 = most sensitive). Low values (≤ 20) will miss small/distant motion.
+- `--sensitivity` scales differ per command (higher = more sensitive on both):
+  `detect motion set` takes **1–50** (v20 MD spec range, default 9);
+  `detect ai set` takes **0–100**. Values valid for one are out of range for the other.
 
 ## Motion
 
 ```bash
 reolink-cli --camera front-door detect motion get
-reolink-cli --camera front-door detect motion set --enable --sensitivity 60
+reolink-cli --camera front-door detect motion set --enable --sensitivity 30
 reolink-cli --camera front-door detect motion set --disable --use-pir
 ```
 
