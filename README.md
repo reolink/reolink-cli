@@ -287,8 +287,14 @@ what they do:
 
 - resolve the latest release from the GitHub API, then download that release's
   asset from `github.com` — no other host is contacted
-- **verify the download against the release's `SHA256SUMS` and abort on any
-  mismatch**, missing entry, or missing checksum file
+- **verify the download against `checksums/<tag>.sha256` committed to this
+  repository's default branch**, and abort on any mismatch, missing entry, or
+  missing checksum file — never against the checksum attached to the release
+  itself. A release asset can be replaced by one API call and the attached
+  checksum regenerated with it; a file on the default branch sits behind a
+  reviewed pull request and permanent history. This is an integrity check, not
+  a signature: it moves the anchor out of the release, it does not prove who
+  built the archive.
 - install two binaries to `~/.local/bin` (`%USERPROFILE%\.local\bin` on
   Windows) — **no `sudo`, no system directories, no services**
 - stop a running `reolink-gateway` **only if it runs from that same prefix**,

@@ -60,32 +60,48 @@ curl -fSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
   -o "$tmp/pkg.tar.gz" "https://github.com/$REPO/releases/download/$tag/$asset" \
   || die "download failed — see https://github.com/$REPO/releases"
 
-# Verify the download against the release's published SHA256SUMS before running
-# anything out of it. This script installs executables fetched over the network,
-# so an unverified archive is the weakest link in the chain — every release ships
-# SHA256SUMS for exactly this purpose.
-say "==> verifying checksum"
-if curl -fsSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
-     -o "$tmp/SHA256SUMS" "https://github.com/$REPO/releases/download/$tag/SHA256SUMS" 2>/dev/null; then
-  expected=$(sed -n "s/^\([0-9a-f]\{64\}\)[[:space:]]*[*]\{0,1\}$asset$/\1/p" "$tmp/SHA256SUMS" | head -n1)
-  [ -n "$expected" ] || die "SHA256SUMS has no entry for $asset — refusing to install"
+# Verify the download against the checksums COMMITTED TO THE REPOSITORY, not the
+# SHA256SUMS attached to the release. The distinction is the trust boundary:
+# replacing a release asset takes one API call by any account with write access
+# and leaves no visible trace, and whoever can do that can regenerate a matching
+# SHA256SUMS in the same call — a checksum from the same release can therefore
+# only ever detect accidental corruption. A file on the default branch is behind
+# a reviewed pull request and permanent history. checksums/<tag>.sha256 is
+# committed there as part of each release, from the machine that built it.
+#
+# Fail closed, deliberately:
+#   - no fallback to the release-attached SHA256SUMS — a fallback would hand an
+#     attacker who controls the release a way to bypass this by making the
+#     repository fetch fail;
+#   - a tag with no committed checksum file aborts, so a fabricated release
+#     (a tag that never went through the release process) does not install.
+#
+# This is an integrity check, not a signature: it moves the anchor out of the
+# release, it does not prove who built the archive.
+say "==> verifying checksum against the repository"
+curl -fsSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
+     -o "$tmp/CHECKSUMS" "https://raw.githubusercontent.com/$REPO/main/checksums/$tag.sha256" 2>/dev/null \
+  || die "no committed checksum file for $tag (checksums/$tag.sha256 on the default branch).
+Either this release has not been synced yet, or the tag did not come from the
+release process. Refusing to install."
 
-  if command -v shasum >/dev/null 2>&1; then
-    actual=$(shasum -a 256 "$tmp/pkg.tar.gz" | awk '{print $1}')
-  elif command -v sha256sum >/dev/null 2>&1; then
-    actual=$(sha256sum "$tmp/pkg.tar.gz" | awk '{print $1}')
-  else
-    die "no shasum/sha256sum available to verify the download — install one, or download and verify manually from https://github.com/$REPO/releases"
-  fi
+expected=$(sed -n "s/^\([0-9a-f]\{64\}\)[[:space:]]*[*]\{0,1\}$asset$/\1/p" "$tmp/CHECKSUMS" | head -n1)
+[ -n "$expected" ] || die "checksums/$tag.sha256 has no entry for $asset — refusing to install"
 
-  [ "$actual" = "$expected" ] || die "checksum mismatch for $asset
+if command -v shasum >/dev/null 2>&1; then
+  actual=$(shasum -a 256 "$tmp/pkg.tar.gz" | awk '{print $1}')
+elif command -v sha256sum >/dev/null 2>&1; then
+  actual=$(sha256sum "$tmp/pkg.tar.gz" | awk '{print $1}')
+else
+  die "no shasum/sha256sum available to verify the download — install one, or download and verify manually from https://github.com/$REPO/releases"
+fi
+
+[ "$actual" = "$expected" ] || die "checksum mismatch for $asset
   expected $expected
   actual   $actual
-The download is corrupt or tampered with. Nothing was installed."
-  say "    ok ($expected)"
-else
-  die "could not fetch SHA256SUMS for $tag — refusing to install an unverified binary"
-fi
+The download does not match the checksum committed to the repository.
+Nothing was installed."
+say "    ok ($expected)"
 
 tar -xzf "$tmp/pkg.tar.gz" -C "$tmp"
 mkdir -p "$BIN"

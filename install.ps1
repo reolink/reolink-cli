@@ -31,15 +31,23 @@ try {
   Write-Host "==> downloading $asset ($tag)"
   Invoke-WebRequest -Headers $headers -Uri "https://github.com/$Repo/releases/download/$tag/$asset" -OutFile $zip
 
-  # Verify against the release's published SHA256SUMS before unpacking. This
-  # script installs executables fetched over the network, so an unverified
-  # archive is the weakest link; every release ships SHA256SUMS for this.
-  Write-Host "==> verifying checksum"
-  $sumsPath = Join-Path $tmp "SHA256SUMS"
+  # Verify against the checksums COMMITTED TO THE REPOSITORY, not the
+  # SHA256SUMS attached to the release. A checksum from the same release can
+  # only detect accidental corruption: whoever can replace the asset can
+  # regenerate a matching SHA256SUMS in the same API call. A file on the
+  # default branch is behind a reviewed pull request and permanent history;
+  # checksums/<tag>.sha256 is committed there as part of each release, from
+  # the machine that built it.
+  #
+  # Fail closed: no fallback to the release-attached SHA256SUMS, and a tag
+  # with no committed checksum file aborts — so a fabricated release does
+  # not install. This is an integrity check, not a signature.
+  Write-Host "==> verifying checksum against the repository"
+  $sumsPath = Join-Path $tmp "CHECKSUMS"
   try {
-    Invoke-WebRequest -Headers $headers -Uri "https://github.com/$Repo/releases/download/$tag/SHA256SUMS" -OutFile $sumsPath
+    Invoke-WebRequest -Headers $headers -Uri "https://raw.githubusercontent.com/$Repo/main/checksums/$tag.sha256" -OutFile $sumsPath
   } catch {
-    throw "could not fetch SHA256SUMS for $tag - refusing to install an unverified binary"
+    throw "no committed checksum file for $tag (checksums/$tag.sha256 on the default branch). Either this release has not been synced yet, or the tag did not come from the release process. Refusing to install."
   }
   # Split on whitespace rather than regex-matching the line: the asset name
   # would otherwise be interpolated into a pattern, where one mis-escaped
@@ -52,10 +60,10 @@ try {
       if ($name -eq $asset) { $expected = $parts[0].Trim().ToLower(); break }
     }
   }
-  if (-not $expected) { throw "SHA256SUMS has no entry for $asset - refusing to install" }
+  if (-not $expected) { throw "checksums/$tag.sha256 has no entry for $asset - refusing to install" }
   $actual = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLower()
   if ($actual -ne $expected) {
-    throw "checksum mismatch for $asset`n  expected $expected`n  actual   $actual`nThe download is corrupt or tampered with. Nothing was installed."
+    throw "checksum mismatch for $asset`n  expected $expected`n  actual   $actual`nThe download does not match the checksum committed to the repository. Nothing was installed."
   }
   Write-Host "    ok ($expected)"
 
