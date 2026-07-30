@@ -153,6 +153,17 @@ for entry in $LOCATIONS; do
   report "$f" "$(extract "$f" "$kind")"
 done
 
+# The installers verify downloads against checksums/v<version>.sha256 on the
+# default branch and fail closed — so a release synced without its checksum file
+# does not have a stale badge, it has a broken `curl | sh` for every user until
+# someone notices. This check is how someone notices within a day.
+if [ -s "checksums/v${want}.sha256" ]; then
+  printf '  ok        %-46s exists\n' "checksums/v${want}.sha256"
+else
+  printf '  MISMATCH  %-46s missing — one-line installs FAIL CLOSED without it\n' "checksums/v${want}.sha256"
+  fail=1
+fi
+
 # The changelog is the one place the version must appear as a heading. A release
 # published without its entry is how a user ends up reading last version's notes.
 # Anchor the closing bracket: a prefix match would accept "## [0.10.1-rc]"
