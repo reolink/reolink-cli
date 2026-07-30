@@ -5,9 +5,16 @@
 Please report security issues **privately** — do not open a public issue, and
 do not describe the problem in a pull request.
 
-Contact [Reolink support](https://support.reolink.com) and state that the report
-concerns a **security issue in `reolink-cli`**, so it is routed rather than
-handled as a normal support ticket.
+Use GitHub's private reporting:
+**[Report a vulnerability](https://github.com/reolink/reolink-cli/security/advisories/new)**
+(also reachable from the repository's Security tab). The report is visible only
+to maintainers, and the discussion stays on the advisory until a fix ships.
+
+If that page is unavailable to you, contact
+[Reolink support](https://support.reolink.com) and state that the report
+concerns a **security issue in `reolink-cli`** so it is routed rather than
+handled as a normal support ticket. Be aware that this is a consumer support
+queue with no category for software vulnerabilities — prefer the link above.
 
 Include the version (`reolink-cli --version`), your platform, and the smallest
 steps that reproduce the problem.
