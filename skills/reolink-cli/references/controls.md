@@ -13,8 +13,9 @@ reolink-cli --camera front-door light ir set --state auto    # or on / off
 reolink-cli --camera front-door light statusled get
 reolink-cli --camera front-door light statusled set --state off
 
-# Spotlight (manual, 0 = until turned off)
-reolink-cli --camera front-door light spotlight set --enable --duration 30
+# Spotlight (manual; --duration is deprecated — re-arming extends the
+# on-period, it does not pulse; use `light spotlight blink` for flashes)
+reolink-cli --camera front-door light spotlight set --enable
 reolink-cli --camera front-door light spotlight set --disable
 
 # White LED alarm config

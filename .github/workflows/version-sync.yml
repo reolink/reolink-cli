@@ -1,4 +1,4 @@
-# The version appears in nine places in this repository plus a CHANGELOG
+# The version appears in seven places in this repository plus a CHANGELOG
 # heading, and keeping them in step by hand has failed three times — once
 # leaving the plugin manifests behind, once leaving the whole repository a
 # version back while the release was already published (readers saw a 0.10.0
@@ -10,7 +10,7 @@
 #
 # Two different questions, so two different triggers:
 #
-#   --self   do the nine agree with each other?  → every PR and push.
+#   --self   do the seven agree with each other?  → every PR and push.
 #            A branch may legitimately carry a version no release uses yet, so
 #            this deliberately does not look at the published release.
 #
