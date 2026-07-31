@@ -65,9 +65,6 @@ curl -s -o /tmp/snap.jpg "http://127.0.0.1:9000/api/snapshot?token=$TOKEN&host=1
 curl -s -o /tmp/clip.h264 "http://127.0.0.1:9000/api/vod/download?token=$TOKEN&host=192.168.1.43:9000&fileName=$NAME"
 ```
 
-There is a fourth streaming endpoint, `/api/preview/video` (live video for
-browser `<video src>` elements), with the same token-in-query rule.
-
 ## Response Shapes
 
 ```jsonc
