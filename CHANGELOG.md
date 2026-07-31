@@ -4,6 +4,87 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.10.6] — 2026-07-31
+
+Most of this release came from issues and pull requests opened here.
+
+### Fixed
+
+- **`discover` dropped the UID and device name for any device that answered
+  both probes** (#36). Deduplication kept the ONVIF record and discarded the
+  Reolink broadcast record wholesale, under a code comment praising ONVIF's
+  "rich metadata" — but the UID and the friendly name live *only* in the
+  broadcast reply, and those are the two fields that let a person tell eleven
+  cameras apart. The reporter had four devices listing without UIDs on Linux.
+
+  Records are now merged per IP: the ONVIF entry gains the UID, the
+  `reolink-lan://name/…` scope, the device kind, and the port-qualified host
+  (`<ip>:9000`, which is what `device add --host` wants; a bare `<ip>` is not).
+  An existing UID is never overwritten.
+
+  Whether a device lands in `lan` or `lanUdp` depends on whether ONVIF is
+  enabled on it (off by default on many models) and whether the network passes
+  WS-Discovery (Windows Defender commonly eats it). The `counts` split still
+  differs between machines and now **stops mattering** — every entry carries the
+  same fields whichever bucket it landed in.
+
+  Verified by A/B against hardware: with ONVIF temporarily enabled on a camera
+  so it answered both probes, 0.10.5 reported `uid: null`, no name and a bare-IP
+  host; this build reports all three with the ONVIF metadata intact.
+
+### Documentation
+
+Six pull requests from @ch-bas, all of them the same defect wearing different
+clothes: a fact that lives in the code, restated in prose, where the
+restatement had drifted.
+
+- **`--week-table` was documented backwards** (#48). It is `Sun=bit0 … Sat=bit6`,
+  now stated with its authority: the vendor SDK defines `iWeekTable` as *"index
+  0:sunday, index 1~index 6:Monday->Saturday"*, with four corroborating
+  definitions in the same header. The doc said `Mon=bit0` until today, so the
+  `31` and `63` copied from it select the wrong days — and a schedule on the
+  wrong days does not look broken.
+- **`detect motion set --sensitivity` is 1–50, not 0–100** (#49). The range is
+  enforced by the parser, so the doc's own example (`--sensitivity 60`) could
+  never run. Confirmed three ways: the v20 spec, and both a camera and an NVR
+  reporting `{"min": 1, "max": 50}` for themselves.
+- **The skill's install snippet could never download anything on macOS** (#47):
+  it mapped `Darwin` to `macos` while the published asset says `darwin`, and its
+  glob omitted `-external-`.
+- **Windows users are no longer told to `self-update`** in the quick start
+  (#42) — it covers macOS and Linux only, as the same README says further down.
+- **The archive example is platform-agnostic and zsh-safe** (#40); zsh treats an
+  unmatched glob as an error rather than passing it through.
+- Reference docs no longer restate value ranges or deprecation status (#50).
+  `--help` is generated from the code and cannot drift; a hand-copy only gets
+  staler. What stays is what `--help` cannot say — for instance that motion and
+  AI sensitivity use *different* scales, which is the trap, not the numbers.
+
+### Build
+
+- The version lived in sixteen hand-edited places; now it lives in two. The six
+  crates inherit `[workspace.package]`, both README badges became live
+  shields.io release lookups (a copy that cannot go stale beats a copy that is
+  checked), and the skill's example output no longer names a version. Cutting a
+  release is now one line plus a CHANGELOG entry.
+- `scripts/check-doc-commands.py` feeds every `reolink-cli` line in a fenced
+  code block to the real binary's parser, which validates subcommands, flag
+  names and value ranges before a command does anything. It runs against
+  TEST-NET-1 with config paths redirected to a temp dir, so nothing touches a
+  device. Verified to catch rather than merely pass: restoring `--sensitivity
+  60` makes it fail. It cannot see whether a documented *meaning* is right —
+  that class is what a human reader catches.
+
+### Policy
+
+- **Published releases and tags are permanent from now on** (#38). Deleting a
+  superseded release breaks every downstream pinning that version, and it was
+  wrong of us to do it. `v*` tags are now protected by a ruleset with no bypass
+  actors (verified: an admin deletion attempt returns 422). Releases 0.10.0
+  through 0.10.4 were deleted under the old policy and cannot be honestly
+  restored; **0.10.5 is the oldest surviving release and the first one covered
+  by this guarantee.**
+
 ## [0.10.5] — 2026-07-30
 
 ### Fixed

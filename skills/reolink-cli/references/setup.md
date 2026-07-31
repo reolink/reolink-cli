@@ -53,6 +53,25 @@ LAN discovery sends the native Reolink UDP probe on every active IPv4 interface
 broadcast domain plus `255.255.255.255`, so dual-NIC hosts should now see
 cameras on each directly attached subnet in one scan.
 
+**What each field means (and why two machines can bucket devices differently).**
+`discover` runs several probes in parallel and merges the answers per device:
+
+- The **Reolink UDP broadcast** (`lanUdp`) supplies the UID, the friendly name
+  (`reolink-lan://name/…` scope), the device kind, and the port-qualified host
+  (`<ip>:9000` — the form `device add --host` wants).
+- **ONVIF WS-Discovery** (`lan`) supplies the ONVIF endpoint, `xaddrs`, and the
+  hardware model in `onvif://…` scopes — **only for devices with ONVIF enabled**
+  in the camera/NVR settings (Network → Advanced → Port/server settings; it is
+  off by default on many models). Toggling ONVIF on a device adds or removes
+  this extra metadata in its entry; UID and name are unaffected.
+
+One device found by both probes yields ONE entry carrying the union of fields;
+the `discovery` label only records which probe answered. The `counts` split is
+therefore environmental, not meaningful: a firewall that eats WS-Discovery
+responses (common on Windows) moves devices from `lan` to `lanUdp` without
+changing what you learn about them. Do not treat `counts` differences across
+machines as a fault — compare the per-device fields instead.
+
 **When `discover` returns empty:**
 1. First run `reolink-cli device list` — user may already have cameras registered; if the target camera exists, verify with `ping` + `login` and report to the user. Don't invent data.
 2. If no matching camera is registered, ask the user whether they want to enter a known IP/UID manually (use `device add CAMERA --host IP:PORT --user admin`) or extend the timeout (`--timeout-secs 10`).
@@ -136,6 +155,7 @@ reolink-cli --camera front-door config get network
 reolink-cli --camera front-door config get osd
 reolink-cli --camera front-door config get osd-format
 reolink-cli --camera front-door config get system-general   # get-only
+reolink-cli --camera front-door config get performance      # get-only: live CPU / encoder / network load
 ```
 
 ```bash
