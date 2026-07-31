@@ -55,6 +55,12 @@ The token supplies the device credentials server-side — **never put `user` /
 `password` in a URL**; the gateway rejects requests without a valid token.
 
 ```bash
+# Live video for a browser <video src> element
+curl -Ns "http://127.0.0.1:9000/api/preview/video?token=$TOKEN&host=192.168.1.43:9000&stream=sub"
+
+# Stop that stream
+curl -s -X POST "http://127.0.0.1:9000/api/preview/stop?token=$TOKEN"
+
 # Events NDJSON
 curl -Ns "http://127.0.0.1:9000/api/events?token=$TOKEN&types=motion,people"
 
@@ -64,6 +70,24 @@ curl -s -o /tmp/snap.jpg "http://127.0.0.1:9000/api/snapshot?token=$TOKEN&host=1
 # Recording download
 curl -s -o /tmp/clip.h264 "http://127.0.0.1:9000/api/vod/download?token=$TOKEN&host=192.168.1.43:9000&fileName=$NAME"
 ```
+
+## Dashboard Endpoints
+
+The gateway's built-in dashboard drives itself through these. They are stable
+enough to script against, but the CLI is the supported surface — reach for these
+only when you are building a UI.
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/health` | GET | liveness; no token required |
+| `/api/features` | GET | what this build supports (same data as `features`) |
+| `/api/cameras` | GET / POST | list the registry / add an entry |
+| `/api/discover` | GET | LAN discovery, same probes as `discover` |
+| `/api/doctor` | GET | health checks; `/api/doctor/fix` (POST) applies them |
+| `/api/recent-ops` | GET | recent operations, for the dashboard's activity list |
+
+This table and the streaming list above are the complete set the gateway
+serves. If you find one that is not here, the docs are stale — please say so.
 
 ## Response Shapes
 

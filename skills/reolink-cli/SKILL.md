@@ -39,7 +39,7 @@ Primary surface: `reolink-cli` (JSON stdout by default). Don't start the MCP ser
 reolink-cli gateway start --addr 127.0.0.1:9000 &
 ```
 
-Only `device add|list|update|remove|resolve|show`, `config init`, and `discover` work without it. Everything else (`ping`, `login`, `info`, `config get/set`, `image`, `osd`, `ptz`, `detect`, `light`, `audio`, `preview`, `snapshot`, `vod`, `events`, `users`, `system reboot`, `system upgrade`) needs the gateway up.
+Works **without** the gateway: `device add|list|update|remove|resolve|show`, `config init`, `discover`, `features`, `doctor`, `cache status|clean` — everything that reads local config or talks to the network directly. (Verified by running each with no gateway listening.) Everything else (`ping`, `login`, `info`, `config get/set`, `image`, `osd`, `ptz`, `detect`, `light`, `audio`, `preview`, `snapshot`, `vod`, `events`, `users`, `system reboot`, `system upgrade`) needs the gateway up.
 
 **Envelopes** — parse `.ok` on CLI, `.status` on gateway:
 
@@ -82,6 +82,7 @@ Resolve ambiguity before picking a command. If still unclear, **ask with options
 | kick off | `users remove` (permanent) OR `users passwd` + `system reboot` (evict session) | Active sessions survive `users remove` until reboot |
 | snapshot | `snapshot [--file PATH]` | JPEG. **Parent directories are auto-created** by the binary (since v0.5.0) — do NOT pre-`mkdir -p` the destination. Same for `vod download` and `preview capture --file`. |
 | **slow / how long / time taken / performance / latency / benchmark** | **`benchmark [--iterations N] [--phases ...] [--reuse-session]`** | Per-phase p50/p95/p99: connect, login, info, snapshot. `--reuse-session` for warm-path. Detail in `references/index.md`. |
+| **cpu / memory / device load / is the camera overloaded / stuttering** | **`config get performance`** | Live reading from the device: `cpuUsedPercent`, `codeRate`, `netDataRate`. Read-only and instantaneous — two calls a second apart legitimately differ. Not every model implements it; those answer a device-level rejection. Distinct from `benchmark`, which times the **client** round trip, not the camera. |
 | **rtsp / rtmp / flv address / stream URL / HA / Frigate / go2rtc / VLC** | **`stream url [--kind rtsp,rtmp,flv] [--stream main,sub,ext] [--with-auth]`** | Default `--kind rtsp --stream main`. `--with-auth` only when user explicitly wants one-shot pasteable URL. NVR: `device expand` then `--tag <nvr>`. Detail in `references/media.md`. |
 | nvr with 8 channels / RLN sub-cameras / channel N | `device expand <nvr-name> [--yes \| --names A,B,C]` | **NVR only**. Registers one entry per channel, tagged with parent name. After: `--tag <nvr-name>` fans out. |
 | **preview / take a look / watch N minutes / watch live** | **`preview play`** (opens ffplay window) | **DEFAULT to `play`, not `capture`.** User wants a live window, not a file. |
