@@ -29,7 +29,11 @@ reolink-cli --camera front-door --gateway-addr 127.0.0.1:9000 record config get
 
 ## Rules
 
-- `--week-table` is a **7-bit bitmap, Sun=bit0 … Sat=bit6** (matches `--help`). Common values:
+- `--week-table` is a **7-bit bitmap, Sun=bit0 … Sat=bit6** — verified against
+  the vendor SDK (`BCNetSDK.h`: `iWeekTable` → *"index 0:sunday, index 1~index
+  6:Monday->Saturday"*, and `weekdays_bitmap` → *"bit0 sunday"*). This document
+  carried Mon=bit0 until 2026-07-31, so any value copied from it before then
+  selects the wrong days. Common values:
   - Weekdays (Mon–Fri): `62`
   - Mon–Sat: `126`
   - All week: `127`
