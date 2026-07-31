@@ -91,7 +91,7 @@ Grab the archive for your platform from the
 extract, and run the bundled installer:
 
 ```bash
-tar -xzf reolink-cli-*-external-darwin-arm64.tar.gz && cd reolink-cli-* && ./install.sh
+tar -xzf reolink-cli-*.tar.gz && cd reolink-cli-*/ && ./install.sh
 # Windows: extract the .zip and run .\install.ps1
 ```
 
