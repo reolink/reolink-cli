@@ -11,10 +11,10 @@ set -e
 REPO="reolink/reolink-cli"
 BIN="$HOME/.local/bin"; mkdir -p "$BIN"
 os=$(uname -s); arch=$(uname -m)
-case "$os" in Darwin) os=macos;; Linux) os=linux;; esac
+case "$os" in Darwin) os=darwin;; Linux) os=linux;; esac
 case "$arch" in aarch64) arch=arm64;; x86_64|amd64) arch=x86_64;; esac
-[ "$os" = macos ] && [ "$arch" = x86_64 ] && { echo "macOS Intel not supported — Apple Silicon (arm64) only"; exit 1; }
-asset="reolink-cli-*-${os}-${arch}.tar.gz"
+[ "$os" = darwin ] && [ "$arch" = x86_64 ] && { echo "macOS Intel not supported — Apple Silicon (arm64) only"; exit 1; }
+asset="reolink-cli-*-external-${os}-${arch}.tar.gz"
 tmp=$(mktemp -d)
 if command -v gh >/dev/null 2>&1; then
   gh release download --repo "$REPO" --pattern "$asset" --dir "$tmp"
