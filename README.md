@@ -81,7 +81,9 @@ curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh
 iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 | iex
 ```
 
-Already installed? Upgrade in place with `reolink-cli self-update --yes`.
+Already installed? On macOS/Linux, upgrade in place with
+`reolink-cli self-update --yes`. On Windows, re-run the installer
+(`install.ps1`) — see [Platform support](#platform-support) for why.
 
 <details>
 <summary>Prefer a downloadable archive?</summary>
