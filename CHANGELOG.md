@@ -4,12 +4,7 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
-## [Unreleased]
-
-Becomes `## [0.10.7] — <date>` when it ships. Kept unversioned until then so
-the manifests are not carrying a version number no release uses — the daily
-version-sync check compares them against the latest published release, and a
-repository that runs ahead trips the same alarm as one that lags behind.
+## [0.10.7] — 2026-08-03
 
 ### Security
 
