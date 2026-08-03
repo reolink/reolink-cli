@@ -302,7 +302,7 @@ Single parent per category — easy to purge, easy to find. **Must** prefer thes
 | Disposable artifacts (snapshots, PCM clips, captures, VOD) | `~/.cache/reolink-cli/{audio,snapshots/<date>,captures,downloads}/` | user / rule authors — **Must** use this prefix |
 | Claude Code plugin cache | `~/.claude/plugins/cache/reolink-cli/` | Claude Code (`/plugin update` refreshes) |
 
-events monitor expands `~/` in `path` and `pcm` fields and auto-`mkdir -p`'s the snapshot parent dir — safe to write rules with `~/.cache/reolink-cli/snapshots/{date}/...` without pre-creating anything. Bulk purge: `rm -rf ~/.cache/reolink`.
+events monitor expands `~/` in `path` and `pcm` fields and auto-`mkdir -p`'s the snapshot parent dir — safe to write rules with `~/.cache/reolink-cli/snapshots/{date}/...` without pre-creating anything. Bulk purge: `rm -rf ~/.cache/reolink-cli`.
 
 ## Launcher
 

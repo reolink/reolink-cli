@@ -54,7 +54,7 @@ say -v "Samantha" "Please step back" -o - --data-format=LEI16@16000 | \
   reolink-cli --camera front-door --gateway-addr 127.0.0.1:9000 audio talk --stdin
 ```
 
-**Why `~/.cache/reolink-cli/audio/`**: standard XDG cache dir. Always writable by the user; safe to delete any time. Pair with snapshot output in `~/.cache/reolink-cli/snapshots/` for a single parent purge target: `rm -rf ~/.cache/reolink`.
+**Why `~/.cache/reolink-cli/audio/`**: standard XDG cache dir. Always writable by the user; safe to delete any time. Pair with snapshot output in `~/.cache/reolink-cli/snapshots/` for a single parent purge target: `rm -rf ~/.cache/reolink-cli`.
 
 Response shape:
 ```json
