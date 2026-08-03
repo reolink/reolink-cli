@@ -78,13 +78,20 @@ curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh
 
 ```powershell
 # Windows — works from PowerShell or the Command Prompt
-powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 | iex"
+powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 -UseBasicParsing | iex"
 ```
 
-`iwr` and `iex` are PowerShell aliases, so the shorter
-`iwr … | iex` only works if you are already in PowerShell. Pasted into the
-Command Prompt it fails with `'iwr' is not recognized`, which does not hint at
-the cause — hence the longer form above, which works in both.
+Two details in that line, both learned the hard way:
+
+- `iwr` and `iex` are PowerShell aliases, so the bare `iwr … | iex` only works
+  if you are already in PowerShell. Pasted into the Command Prompt it fails with
+  `'iwr' is not recognized`, which names the alias rather than the cause. The
+  `powershell -NoProfile -Command "…"` wrapper works from either shell.
+- `-UseBasicParsing` matters on Windows PowerShell 5.1, where
+  `Invoke-WebRequest` otherwise hands the response to the Internet Explorer
+  engine for DOM parsing. On a machine where IE's first-launch configuration
+  never ran, that stalls or fails with `Access is denied` before anything is
+  downloaded. On PowerShell 7 it is already the default and the flag is a no-op.
 
 Already installed? On macOS/Linux, upgrade in place with
 `reolink-cli self-update --yes`. On Windows, re-run the installer

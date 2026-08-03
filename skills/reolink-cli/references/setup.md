@@ -40,7 +40,7 @@ build you have is not in `--version`; read it with
 **Windows** — this form works from PowerShell *and* from the Command Prompt:
 
 ```
-powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 | iex"
+powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 -UseBasicParsing | iex"
 ```
 
 `iwr` and `iex` are PowerShell aliases, so the bare `iwr … | iex` fails in
