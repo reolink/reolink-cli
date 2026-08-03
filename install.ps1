@@ -2,12 +2,12 @@
 #
 # From PowerShell or the Command Prompt:
 #
-#   powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 | iex"
+#   powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 -UseBasicParsing | iex"
 #
 # From PowerShell only (iwr/iex are PowerShell aliases; in cmd.exe this fails
 # with "'iwr' is not recognized", which does not hint at the cause):
 #
-#   iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 | iex
+#   iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 -UseBasicParsing | iex
 #
 # Runs on Windows PowerShell 5.1 and PowerShell 7.
 #
