@@ -37,8 +37,18 @@ Alpine, so it needs the musl build the installer selects automatically. Which
 build you have is not in `--version`; read it with
 `file "$(command -v reolink-cli)"`, where "statically linked" means musl.
 
-Windows: download the `...-windows-x86_64.zip` from the Releases page and put
-`bin\` on PATH. Then `reolink-cli config init`.
+**Windows** — this form works from PowerShell *and* from the Command Prompt:
+
+```
+powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 | iex"
+```
+
+`iwr` and `iex` are PowerShell aliases, so the bare `iwr … | iex` fails in
+cmd.exe with `'iwr' is not recognized` — an error that names the alias rather
+than the cause. Use the form above and it does not matter which shell you are
+in. It installs to `%USERPROFILE%\.local\bin`, adds it to PATH, runs
+`config init`, and verifies the download against the committed checksum, which
+downloading the `.zip` by hand does not.
 
 ## Discovery
 
