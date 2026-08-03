@@ -12,6 +12,8 @@ curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh
 
 Both binaries land under `~/.local/bin/`. To upgrade later: `reolink-cli self-update` (macOS/Linux), or re-run the installer.
 
+The installer picks the right archive per platform, including the statically linked musl build on Alpine and Home Assistant OS, and verifies the download against a checksum committed to the repository. If it refuses with a checksum mismatch, retry once and then report it — do not point `REOLINK_REPO` elsewhere or fetch the archive by hand to get past it. There is no flag to skip verification.
+
 ```bash
 # Start the gateway (required for most commands)
 reolink-cli gateway start --addr 127.0.0.1:9000 &

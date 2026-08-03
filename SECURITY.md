@@ -67,6 +67,23 @@ If you verify downloads by hand, use the committed checksum file, not the
 `SHA256SUMS` attached to the release — see
 [Verifying a download](README.md#verifying-a-download).
 
+### If verification fails
+
+The installers refuse and change nothing. A truncated or proxy-mangled download
+is the ordinary cause, so one retry is reasonable.
+
+If it fails again, **report it rather than working around it**. Pointing
+`REOLINK_REPO` at another repository or downloading the archive by hand both
+skip the check that just fired, which is the opposite of what a failed integrity
+check should lead you to do. Please include the expected and actual hashes, the
+tag, and the asset name — that is enough for us to tell a bad mirror from
+something worse.
+
+A missing-checksum failure (`no committed checksum file for <tag>`) usually
+means a release was published before its checksums were synced, which is our
+bug, not an attack. It is still worth reporting: with the installers failing
+closed, that window breaks every one-line install until we fix it.
+
 ## What this tool does by design
 
 Knowing the intended behaviour makes it easier to tell a bug from a feature:

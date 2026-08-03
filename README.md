@@ -225,6 +225,34 @@ Prebuilt binaries are published on each [Release](https://github.com/reolink/reo
 separate assets (`…-linux-arm64.tar.gz` vs `…-linux-arm64-musl.tar.gz`) so an
 existing install keeps resolving the archive it was installed from.
 
+**Which one did I get?** `--version` does not say, so read it off the binary:
+
+```bash
+file "$(command -v reolink-cli)"   # "statically linked" = musl build
+```
+
+This matters if you move the binary between machines. A glibc build on a musl
+host does not fail gracefully — it cannot load at all, and the error names a
+missing symbol rather than the real problem:
+
+```
+Error relocating ./reolink-cli: __res_init: symbol not found
+```
+
+The static musl build runs on both, so when in doubt use that one.
+
+### Home Assistant OS
+
+The `homeassistant` core container is aarch64 Alpine, so `shell_command` needs
+the musl build. Install it inside that container, not on the host:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh | sh
+```
+
+The gateway must be reachable from wherever the command runs — start it in the
+same container, or point `REOLINK_GATEWAY_ADDR` at one on the LAN.
+
 `self-update` covers macOS and Linux. On Windows it exits with the download
 link instead: the archive is a `.zip`, and a running `.exe` cannot be replaced
 in place — upgrade by extracting the new archive and running `install.ps1`.

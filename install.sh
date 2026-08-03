@@ -151,8 +151,14 @@ fi
 [ "$actual" = "$expected" ] || die "checksum mismatch for $asset
   expected $expected
   actual   $actual
-The download does not match the checksum committed to the repository.
-Nothing was installed."
+The download does not match the checksum committed to $CHECKSUM_REPO.
+Nothing was installed.
+
+A truncated or proxy-mangled download is the ordinary cause, so retrying is
+worth one attempt. If it fails again, stop and report it at
+https://github.com/$CHECKSUM_REPO/security/advisories/new — do not work around
+it by pointing REOLINK_REPO elsewhere or downloading the archive by hand, which
+skips the only check that would have caught the problem."
 say "    ok ($expected)"
 
 # Refuse a hostile archive layout before unpacking it (GHSA-65x2-w384-qp7j,
