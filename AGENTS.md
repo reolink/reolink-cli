@@ -148,7 +148,23 @@ Slash commands run a single deterministic shell command — **no LLM intent mapp
 
 ## Uninstall
 
-The release tarball ships its own `uninstall.sh` / `uninstall.ps1` scripts:
+**Installed with the one-line installer?** There is no tarball, so use the
+binary's own uninstall — this is the path most installations need:
+
+```sh
+reolink-cli setup --uninstall --no-interactive --agents none
+```
+
+It stops gateways started from this install prefix, removes both binaries, and
+keeps config, aliases, cache and rules. Add `--purge` to wipe those too.
+
+On Windows it will report that it could not remove `reolink-cli.exe` and exit
+non-zero: the OS locks a running image, so the binary running the uninstall
+cannot delete itself. The message gives the one command that finishes the job.
+This is expected, not a failure of the uninstall.
+
+**Installed from the release tarball?** It ships `uninstall.sh` /
+`uninstall.ps1`, thin wrappers around the same command:
 
 ```sh
 # macOS / Linux — from inside the extracted tarball directory
