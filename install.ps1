@@ -30,7 +30,7 @@ $headers = @{ 'User-Agent' = 'reolink-cli-install' }
 if ($env:GITHUB_TOKEN) { $headers['Authorization'] = "Bearer $($env:GITHUB_TOKEN)" }
 
 Write-Host "==> resolving latest release of $Repo"
-$rel = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Repo/releases/latest"
+$rel = Invoke-RestMethod -UseBasicParsing -Headers $headers -Uri "https://api.github.com/repos/$Repo/releases/latest"
 $tag = $rel.tag_name
 if (-not $tag) { throw "could not resolve the latest release (public repo? set GITHUB_TOKEN if private)" }
 $ver   = $tag.TrimStart('v')
@@ -44,7 +44,7 @@ New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 try {
   $zip = Join-Path $tmp $asset
   Write-Host "==> downloading $asset ($tag)"
-  Invoke-WebRequest -Headers $headers -Uri "https://github.com/$Repo/releases/download/$tag/$asset" -OutFile $zip
+  Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri "https://github.com/$Repo/releases/download/$tag/$asset" -OutFile $zip
 
   # Verify against the checksums COMMITTED TO THE REPOSITORY, not the
   # SHA256SUMS attached to the release. A checksum from the same release can
@@ -62,7 +62,7 @@ try {
   Write-Host "==> verifying checksum against $ChecksumRepo"
   $sumsPath = Join-Path $tmp "CHECKSUMS"
   try {
-    Invoke-WebRequest -Headers $headers -Uri "https://raw.githubusercontent.com/$ChecksumRepo/main/checksums/$tag.sha256" -OutFile $sumsPath
+    Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri "https://raw.githubusercontent.com/$ChecksumRepo/main/checksums/$tag.sha256" -OutFile $sumsPath
   } catch {
     throw "no committed checksum file for $tag (checksums/$tag.sha256 on the default branch of $ChecksumRepo). Either this release has not been synced yet, or the tag did not come from the release process. Refusing to install."
   }

@@ -91,6 +91,28 @@ Knowing the intended behaviour makes it easier to tell a bug from a feature:
 - The gateway listens on `127.0.0.1` by default and **refuses browser
   cross-origin requests**. Binding it to `0.0.0.0` is an explicit opt-in and
   exposes camera control to your whole LAN.
+
+  Loopback is not a boundary against a web page — your browser can reach
+  `127.0.0.1`, and the gateway logs in with stored credentials. Two checks
+  apply to any request carrying an `Origin`, which means browsers:
+
+  1. the `Origin` must match the `Host` it addressed, and
+  2. that `Host` must be an address the gateway actually bound to.
+
+  The second exists because DNS rebinding defeats the first: an attacker who
+  serves `evil.example`, lets its TTL lapse and has the browser re-resolve it to
+  `127.0.0.1` produces a request where `Origin` and `Host` are *both*
+  `evil.example` — perfectly matching, and refused anyway because the gateway
+  never bound that name.
+
+  **Consequence:** reaching the dashboard from a browser through a custom
+  hostname is refused; use `localhost`, `127.0.0.1`, or the address it is bound
+  to. From the server's side a custom name is indistinguishable from the attack.
+  Requests without an `Origin` — `curl`, go2rtc, Home Assistant server-side
+  pulls, `<img src>` embedding — are unaffected and may use any hostname.
+
+- Gateway session tokens expire **300 s after their last use** (sliding), so a
+  token lifted from a process list or a log stops working on its own.
 - Camera credentials are stored in the local config file with owner-only
   permissions, and the CLI refuses to read that file if it is group- or
   world-readable.
