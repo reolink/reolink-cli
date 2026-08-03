@@ -11,6 +11,26 @@
 set -eu
 
 REPO="${REOLINK_REPO:-reolink/reolink-cli}"
+
+# Where the checksum comes from is NOT overridable, and that is the whole point.
+#
+# Reported privately (GHSA-65x2-w384-qp7j, finding 2). Both the archive and the
+# checksum used to be fetched from $REPO, so pointing REOLINK_REPO at another
+# repository meant the archive was checked against *that* repository's own
+# committed checksums. Attacker supplies both halves, every check passes, and
+# the install reports "ok" with a hash it just accepted from the attacker.
+#
+# "You need shell access to set the variable, and then you have code execution
+# anyway" is not a rebuttal here. The override travels in text people copy: a
+# blog snippet, a Dockerfile, a CI job, a web page an AI agent is reading. The
+# danger was never that the variable exists; it was that it silently moved the
+# anchor along with the download, so a documented, apparently-verified path was
+# not verified against anything the project controls.
+#
+# A genuine mirror still works: mirroring means identical bytes, so the
+# canonical checksums match. What no longer works is a fork serving its own
+# build — which is exactly the case that must not silently pass.
+CHECKSUM_REPO="reolink/reolink-cli"
 PREFIX="${REOLINK_PREFIX:-$HOME/.local}"
 BIN="$PREFIX/bin"
 
@@ -37,9 +57,34 @@ if [ "$os" = darwin ] && [ "$arch" = x86_64 ]; then
   die "macOS Intel (x86_64) is not supported — Apple Silicon (arm64) only. See https://github.com/$REPO/releases"
 fi
 
+# Alpine and the distributions built on it (Home Assistant OS most visibly) use
+# musl rather than glibc. The glibc archives do not merely run badly there, they
+# cannot load at all: `Error relocating ./reolink-cli: __res_init: symbol not
+# found`. Pick the statically linked musl archive instead.
+#
+# Two probes because either alone has a blind spot: the loader path is what
+# actually decides, but a container can carry musl without the usual filename,
+# and `ldd --version` prints "musl libc" on Alpine while exiting non-zero, so it
+# is read for its output and not its status. A glibc box that merely has musl
+# installed alongside would match and get the static archive, which runs there
+# too — the failure this ordering avoids is the one that leaves you unable to
+# start the binary at all.
+if [ "$os" = linux ]; then
+  if [ -n "$(ls /lib/ld-musl-*.so.1 2>/dev/null)" ] ||
+     { command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi musl; }; then
+    arch="${arch}-musl"
+  fi
+fi
+
 # Optional bearer token (private repo only); public access is anonymous.
 AUTH=""
 [ -n "${GITHUB_TOKEN:-}" ] && AUTH="Authorization: Bearer $GITHUB_TOKEN"
+
+if [ "$REPO" != "$CHECKSUM_REPO" ]; then
+  say "note: downloading from $REPO, but verifying against checksums committed to"
+  say "      $CHECKSUM_REPO. A mirror of the same artifacts passes; a fork serving"
+  say "      its own build will not."
+fi
 
 say "==> resolving latest release of $REPO"
 tag=$(curl -fsSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
@@ -56,9 +101,14 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
 say "==> downloading $asset ($tag)"
+hint=""
+case "$arch" in
+  *-musl) hint="
+musl archives start at v0.10.7; earlier releases published glibc builds only." ;;
+esac
 curl -fSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
   -o "$tmp/pkg.tar.gz" "https://github.com/$REPO/releases/download/$tag/$asset" \
-  || die "download failed — see https://github.com/$REPO/releases"
+  || die "download failed — see https://github.com/$REPO/releases$hint"
 
 # Verify the download against the checksums COMMITTED TO THE REPOSITORY, not the
 # SHA256SUMS attached to the release. The distinction is the trust boundary:
@@ -76,12 +126,14 @@ curl -fSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
 #   - a tag with no committed checksum file aborts, so a fabricated release
 #     (a tag that never went through the release process) does not install.
 #
-# This is an integrity check, not a signature: it moves the anchor out of the
-# release, it does not prove who built the archive.
-say "==> verifying checksum against the repository"
+# This is an integrity check, not a signature. It proves the archive is the one
+# whose hash was committed to $CHECKSUM_REPO; it does not prove who built it.
+# An attacker who can commit to that repository's default branch can publish a
+# matching pair. Nothing here defends against that — see SECURITY.md.
+say "==> verifying checksum against $CHECKSUM_REPO"
 curl -fsSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
-     -o "$tmp/CHECKSUMS" "https://raw.githubusercontent.com/$REPO/main/checksums/$tag.sha256" 2>/dev/null \
-  || die "no committed checksum file for $tag (checksums/$tag.sha256 on the default branch).
+     -o "$tmp/CHECKSUMS" "https://raw.githubusercontent.com/$CHECKSUM_REPO/main/checksums/$tag.sha256" 2>/dev/null \
+  || die "no committed checksum file for $tag (checksums/$tag.sha256 on the default branch of $CHECKSUM_REPO).
 Either this release has not been synced yet, or the tag did not come from the
 release process. Refusing to install."
 
@@ -103,7 +155,44 @@ The download does not match the checksum committed to the repository.
 Nothing was installed."
 say "    ok ($expected)"
 
-tar -xzf "$tmp/pkg.tar.gz" -C "$tmp"
+# Refuse a hostile archive layout before unpacking it (GHSA-65x2-w384-qp7j,
+# finding 3). Two separate problems, and only one of them was theoretical.
+#
+# Absolute and `..` members: current tar implementations already contain these
+# — BSD tar refuses `..` outright and exits non-zero, GNU/busybox tar strips the
+# prefix and keeps the file inside the destination — so neither escapes today.
+# The check is here so that guarantee comes from this script rather than from
+# whichever tar happens to be installed, and so the failure is a clear sentence
+# instead of "Path contains '..': Unknown error: -1".
+#
+# The one that was real: the binaries were located with
+# `find "$tmp" -type f -name reolink-cli | head -n1`, which searches the whole
+# extraction tree and takes whatever the walk reaches first. An archive carrying
+# a second `reolink-cli` in a directory sorting before the real one wins, and
+# that file is then chmod +x'd and executed. Confirmed by building such an
+# archive: the planted copy was selected. Both are fixed below — extract into a
+# dedicated subdirectory, and copy from the archive's documented layout instead
+# of searching for a name.
+say "==> checking archive layout"
+bad=$(tar -tzf "$tmp/pkg.tar.gz" | awk '
+  /^\// || /(^|\/)\.\.(\/|$)/ { print; count++ }
+  END { if (count == 0) exit 0 }' | head -n5)
+[ -z "$bad" ] || die "archive contains absolute or parent-directory members — refusing to extract:
+$bad"
+
+unpack="$tmp/unpack"
+mkdir -p "$unpack"
+tar -xzf "$tmp/pkg.tar.gz" -C "$unpack" || die "extraction failed"
+
+# The directory name is not discovered, it is derived: the release archive
+# always unpacks to a single directory named after itself, so we know what it
+# must be called before looking. Searching for it — even for "the first
+# top-level directory" — reintroduces the bug being fixed, because `find`
+# returns readdir order and an attacker picks the names. Anything else in the
+# archive is now simply never consulted.
+root="$unpack/${asset%.tar.gz}"
+[ -d "$root" ] || die "archive does not unpack to ${asset%.tar.gz}/ — layout is not what this installer expects"
+
 mkdir -p "$BIN"
 
 # Stop a running reolink-gateway installed under $BIN before overwriting, so the
@@ -118,8 +207,11 @@ if command -v pgrep >/dev/null 2>&1; then
 fi
 
 for b in reolink-cli reolink-gateway; do
-  src=$(find "$tmp" -type f -name "$b" | head -n1)
-  [ -n "$src" ] || die "$b not found in the archive"
+  src="$root/bin/$b"
+  [ -f "$src" ] || die "$b is not at bin/$b in the archive — refusing to guess"
+  # A symlink here would copy whatever it points at, under a name we then make
+  # executable. The archive ships regular files; anything else is not it.
+  [ -L "$src" ] && die "bin/$b in the archive is a symlink — refusing to install"
   cp "$src" "$BIN/$b" && chmod 0755 "$BIN/$b"
 done
 

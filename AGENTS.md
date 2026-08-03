@@ -1,6 +1,12 @@
 # Agent Setup — reolink-cli
 
-Read this when an AI agent first encounters the plugin. By the time you see this file, the user has already extracted the release tarball and run `install.sh`, so the binaries and the plugin tree are already on disk. Your job is to confirm the install, then operate cameras via the skill.
+Read this when an AI agent first encounters the plugin. Your job is to confirm the install, then operate cameras via the skill.
+
+If the binaries are not on disk yet, the one-line installer fetches them and verifies the download against the checksum committed to this repository:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh | sh
+```
 
 **What you (the AI) should do, in order:**
 
@@ -15,7 +21,7 @@ If any step fails, do not silently continue — see **Part 6 — Troubleshooting
 
 ## Part 1 — Verify CLI install
 
-The user ran `./install.sh` from the release tarball; both binaries should now be at `~/.local/bin/` (or `%USERPROFILE%\.local\bin\` on Windows).
+Both binaries should be at `~/.local/bin/` (or `%USERPROFILE%\.local\bin\` on Windows).
 
 ```sh
 reolink-cli --version
@@ -34,9 +40,14 @@ export PATH="$HOME/.local/bin:$PATH"
 $env:PATH += ";$HOME\.local\bin"
 ```
 
-To **upgrade** the binaries, the user gets a fresh release tarball from their vendor, extracts it over the old one, and re-runs `./install.sh`. Re-running is idempotent — it overwrites `~/.local/bin/reolink-cli` and `reolink-gateway` in place.
+To **upgrade**, run `reolink-cli self-update` (macOS and Linux). It checks the
+latest release, replaces both binaries in place, and is a no-op when already
+current. On Windows it exits with the download link instead: the archive is a
+`.zip` and a running `.exe` cannot be replaced in place, so upgrade there by
+extracting the new archive and running `install.ps1`.
 
-If `~/.local/bin` is on PATH but the version is older than the skill expects (see Part 5), point the user at the new tarball — there is no in-place network upgrade in the trial release.
+Re-running the one-line installer is an equivalent upgrade path on any platform,
+and is idempotent — it overwrites both binaries in place.
 
 ---
 
@@ -52,7 +63,7 @@ The plugin tree (`SKILL.md`, slash commands, skill references) is already on dis
 | **Cursor / Windsurf** | `.cursor-plugin/` next to this file is auto-detected on workspace open |
 | **Other** | Read `skills/reolink-cli/SKILL.md` next to this file as a system rule |
 
-The canonical skill reference is the local file `skills/reolink-cli/SKILL.md` inside this plugin tree. When the user upgrades by re-extracting a new tarball, that file is replaced.
+The canonical skill reference is the local file `skills/reolink-cli/SKILL.md` inside this plugin tree. Upgrading replaces that file.
 
 If the cached skill in your agent looks older than the local tarball plugin tree, ask the user to re-run their agent's plugin-refresh command (e.g. in Claude Code: `/plugin update reolink-cli`).
 
@@ -187,7 +198,7 @@ reolink-cli cache status --output json 2>/dev/null \
   || echo "(older binary — no 'cache' command)"
 ```
 
-**Read `.data.commands`** from the `features` output before dispatching any subcommand. If a command in SKILL.md is missing from that list, the installed binary is older than the skill and the right response is to tell the user to upgrade by re-extracting their newest release tarball over the old one.
+**Read `.data.commands`** from the `features` output before dispatching any subcommand. If a command in SKILL.md is missing from that list, the installed binary is older than the skill and the right response is to tell the user to run `reolink-cli self-update`.
 
 The skill carries no version of its own — it is distributed with the release archive, so its version is that release. Compare `reolink-cli --version` against the latest release instead.
 
@@ -198,10 +209,11 @@ The skill carries no version of its own — it is distributed with the release a
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `command not found: reolink-cli` | Install succeeded but `~/.local/bin` is not on `PATH` | `export PATH="$HOME/.local/bin:$PATH"` and add the line to `~/.zshrc` / `~/.bashrc` |
-| `error: no prebuilt binary for <os>-<arch>` (during install.sh) | Release tarball does not include this platform's binary | Ask the vendor for a build for your platform, or build from source |
+| `error: unsupported OS '<os>'` / `error: unsupported arch '<arch>'` (during install.sh) | No release archive is published for this platform — see [Platform support](README.md#platform-support) | Build from source, or open an issue asking for the target |
+| `Error relocating …: __res_init: symbol not found`, or `not found` running a binary that plainly exists | A glibc archive on a musl system (Alpine, Home Assistant OS) | Re-run `install.sh`; it detects musl and fetches the `-musl` archive. Downloading an archive by hand skips that detection |
 | `gateway connect failed: Connection refused` | Gateway process not running | The CLI's error message prints the exact start command — paste and run it |
 | Skill referenced commands that don't exist in `reolink-cli --help` | Agent loaded a stale cached skill (older than the binary) | Have the user run their agent's plugin-refresh command (Claude Code: `/plugin update reolink-cli`) |
-| `reolink-cli --version` prints an older number than expected | Stale binary — no upgrade fired | Ask the vendor for the newest release tarball and re-run `./install.sh` from it |
+| `reolink-cli --version` prints an older number than expected | Stale binary — no upgrade fired | `reolink-cli self-update` (macOS/Linux), or re-run the one-line installer |
 | Windows: install.ps1 errors "file is in use" / `Copy-Item` locked | Running `reolink-cli.exe` / `reolink-gateway.exe` process holds the binary | install.ps1 auto-stops processes under `%USERPROFILE%\.local\bin`. Foreign processes (e.g., `C:\tools\reolink-cli.exe`) are listed with PID but not killed automatically — `Stop-Process -Id <pid> -Force` and re-run |
 | `preview play` fails with `ffplay not found` | `ffmpeg` not installed | See the ffplay table below; all other commands still work |
 
