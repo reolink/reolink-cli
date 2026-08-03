@@ -1,7 +1,7 @@
 {
   "name": "reolink-cli",
   "description": "Operate Reolink cameras locally: discover, login, inspect, configure, preview, snapshot, and control PTZ/light/audio/detection/recording.",
-  "version": "0.10.6",
+  "version": "0.10.7",
   "author": {
     "name": "reolink"
   },
