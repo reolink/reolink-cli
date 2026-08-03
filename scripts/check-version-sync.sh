@@ -161,6 +161,78 @@ else
   fail=1
 fi
 
+# Existing is not the same as correct. That file is the trust anchor every
+# download path now verifies against, and nothing checked that it describes the
+# archives actually being served. A hash that is present but wrong is worse than
+# one that is missing: missing fails with a message naming the cause, wrong fails
+# with "checksum mismatch", which is the wording reserved for a tampered
+# download — so the first thing it does is send users looking for an attacker.
+#
+# No download needed: GitHub computes a digest per asset and serves it in the
+# release API, so this compares our committed hash against the one the server
+# reports for the bytes it is handing out.
+#
+# Anonymous `curl`, not `gh`. The release API on a public repository needs no
+# credential, and requiring one would have meant giving the workflow a token —
+# which would in turn have meant the account merging that change needed
+# `workflow` scope it does not have. A check nobody can land is worth less than
+# a check with a lower rate limit. This also matches how the version above is
+# resolved, rather than introducing a second way to talk to the same API.
+#
+# Skipped for --self (a branch may name a release that does not exist yet) and
+# when the API is unreachable; a checker that fails on a laptop offline would
+# just be switched off.
+if [ "$self" -eq 0 ] && [ -s "checksums/v${want}.sha256" ]; then
+  if ! command -v python3 >/dev/null 2>&1; then
+    # Say so out loud. Skipping quietly is how a check stops running without
+    # anyone deciding that it should — the run stays green and looks identical
+    # to one that verified everything.
+    printf '  skip      %-46s python3 not available to read the API\n' "committed hashes vs release"
+    api=""
+  else
+    api=$(curl -fsSL -A version-sync-check \
+            "https://api.github.com/repos/reolink/reolink-cli/releases/tags/v${want}" 2>/dev/null \
+          | python3 -c 'import json,sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for a in d.get("assets", []):
+    digest, name = a.get("digest") or "", a.get("name") or ""
+    if digest and name:
+        print(digest, name)' 2>/dev/null || true)
+    [ -n "$api" ] || printf '  skip      %-46s release not published yet, or no network\n' \
+      "committed hashes vs release"
+  fi
+  if [ -n "$api" ]; then
+    mism=0
+    checked=0
+    # Iterate over what we committed: an asset present on the release but absent
+    # from the file is a separate problem (the installer would refuse it), and
+    # SHA256SUMS itself is deliberately not in the committed file.
+    while read -r hash name; do
+      [ -n "$name" ] || continue
+      checked=$((checked + 1))
+      theirs=$(printf '%s\n' "$api" | sed -n "s|^sha256:\([0-9a-f]*\) ${name}\$|\1|p" | head -n1)
+      if [ -z "$theirs" ]; then
+        printf '  MISMATCH  %-46s not attached to the release\n' "$name"
+        mism=1
+      elif [ "$theirs" != "$hash" ]; then
+        printf '  MISMATCH  %-46s committed %s… vs served %s…\n' \
+          "$name" "$(printf '%s' "$hash" | cut -c1-12)" "$(printf '%s' "$theirs" | cut -c1-12)"
+        mism=1
+      fi
+    done <<EOF
+$(sed -n 's/^\([0-9a-f]\{64\}\)[[:space:]][[:space:]]*[*]\{0,1\}\(.*\)$/\1 \2/p' "checksums/v${want}.sha256")
+EOF
+    if [ "$mism" -eq 0 ]; then
+      printf '  ok        %-46s %s assets match what is served\n' "committed hashes vs release" "$checked"
+    else
+      fail=1
+    fi
+  fi
+fi
+
 # The changelog is the one place the version must appear as a heading. A release
 # published without its entry is how a user ends up reading last version's notes.
 # Anchor the closing bracket: a prefix match would accept "## [0.10.1-rc]"
