@@ -113,6 +113,21 @@ Knowing the intended behaviour makes it easier to tell a bug from a feature:
 
 - Gateway session tokens expire **300 s after their last use** (sliding), so a
   token lifted from a process list or a log stops working on its own.
+
+- **Any process on the machine that can reach the gateway's port can control
+  your cameras.** The gateway is the local control plane the CLI talks to, and
+  the CLI is not privileged — so `POST /api/cameras/<name>/login` mints a
+  session token using the credentials in `aliases.toml`, and `PUT`/`DELETE` on
+  a camera edit the registry, all without presenting a token first. The
+  cross-origin guard above stops *web pages*; it is not a defence against local
+  software, and nothing here is.
+
+  Said plainly because loopback binding plus an origin check can read as
+  "protected" when it is not: the boundary is the machine, not the process. A
+  user who runs untrusted software under their own account should assume it can
+  view their cameras. Reports of a local process controlling the gateway are
+  therefore working as designed, not vulnerabilities — but if you find a way
+  for something *remote* to reach it, that very much is.
 - Camera credentials are stored in the local config file with owner-only
   permissions, and the CLI refuses to read that file if it is group- or
   world-readable.
