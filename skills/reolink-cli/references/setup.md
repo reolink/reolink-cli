@@ -3,32 +3,28 @@
 ## Install the `reolink-cli` binary (first run)
 
 Installing this skill does **not** install the binary. If `reolink-cli` is not
-on PATH (you'll see `command not found`), fetch it from the GitHub Release once —
-prefers `gh` when present, else the public download URL:
+on PATH (you'll see `command not found`), run the installer once:
 
 ```bash
-set -e
-REPO="reolink/reolink-cli"
-BIN="$HOME/.local/bin"; mkdir -p "$BIN"
-os=$(uname -s); arch=$(uname -m)
-case "$os" in Darwin) os=darwin;; Linux) os=linux;; esac
-case "$arch" in aarch64) arch=arm64;; x86_64|amd64) arch=x86_64;; esac
-[ "$os" = darwin ] && [ "$arch" = x86_64 ] && { echo "macOS Intel not supported — Apple Silicon (arm64) only"; exit 1; }
-asset="reolink-cli-*-external-${os}-${arch}.tar.gz"
-tmp=$(mktemp -d)
-if command -v gh >/dev/null 2>&1; then
-  gh release download --repo "$REPO" --pattern "$asset" --dir "$tmp"
-else
-  ver=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  name=$(echo "$asset" | sed "s/\*/${ver#v}/")
-  curl -fsSL -o "$tmp/$name" "https://github.com/$REPO/releases/download/$ver/$name"
-fi
-tar -xzf "$tmp"/*.tar.gz -C "$tmp"
-cp "$tmp"/*/bin/reolink-cli "$tmp"/*/bin/reolink-gateway "$BIN/"
-chmod +x "$BIN/reolink-cli" "$BIN/reolink-gateway"; rm -rf "$tmp"
-case ":$PATH:" in *":$BIN:"*) ;; *) echo "NOTE: add $BIN to your PATH";; esac
+curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh | sh
 reolink-cli --version   # → <version> (external · LAN-only)
 ```
+
+If your environment will not pipe a download into a shell, fetch and run it in
+two steps instead:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh -o /tmp/reolink-install.sh
+sh /tmp/reolink-install.sh
+```
+
+Use the installer rather than downloading a release archive by hand. It picks
+the right archive for the platform — including the musl build on Alpine and
+Home Assistant OS, where the glibc archive cannot load at all — and it verifies
+the download against the checksum committed to the repository, refusing to
+install anything that does not match. A hand-rolled `curl | tar` skips that
+check entirely. It installs both binaries to `~/.local/bin`, runs
+`config init`, and prints the PATH line if the directory is not on PATH yet.
 
 Windows: download the `...-windows-x86_64.zip` from the Releases page and put
 `bin\` on PATH. Then `reolink-cli config init`.
@@ -56,14 +52,21 @@ cameras on each directly attached subnet in one scan.
 **What each field means (and why two machines can bucket devices differently).**
 `discover` runs several probes in parallel and merges the answers per device:
 
-- The **Reolink UDP broadcast** (`lanUdp`) supplies the UID, the friendly name
-  (`reolink-lan://name/…` scope), the device kind, and the port-qualified host
-  (`<ip>:9000` — the form `device add --host` wants).
+- The **Reolink UDP broadcast** (`lanUdp`) supplies the UID, the `mac`, the
+  friendly name (`reolink-lan://name/…` scope), the hardware model
+  (`reolink-lan://hardware/…` scope), the device kind, and the port-qualified
+  host (`<ip>:9000` — the form `device add --host` wants). This probe answers
+  regardless of the ONVIF setting, so these fields are the ones you can count
+  on for every device.
 - **ONVIF WS-Discovery** (`lan`) supplies the ONVIF endpoint, `xaddrs`, and the
   hardware model in `onvif://…` scopes — **only for devices with ONVIF enabled**
   in the camera/NVR settings (Network → Advanced → Port/server settings; it is
   off by default on many models). Toggling ONVIF on a device adds or removes
-  this extra metadata in its entry; UID and name are unaffected.
+  this extra metadata in its entry; UID, name and MAC are unaffected.
+
+`mac` is the field to join on when matching `discover` output against DHCP
+leases or a router's client list — it is stable across the address changes that
+make `host` unreliable as an identity.
 
 One device found by both probes yields ONE entry carrying the union of fields;
 the `discovery` label only records which probe answered. The `counts` split is

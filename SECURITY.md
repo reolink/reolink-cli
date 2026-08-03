@@ -31,6 +31,42 @@ plugin manifests, and the installers in this repository.
 Out of scope: camera firmware itself and the Reolink mobile/desktop apps —
 report those through [Reolink support](https://support.reolink.com).
 
+## Download verification: what it proves, and what it does not
+
+Stated plainly because the distinction is easy to overstate, and we did overstate
+it once.
+
+Every download path — `install.sh`, `install.ps1`, and `reolink-cli
+self-update` — verifies the archive against `checksums/<tag>.sha256` committed to
+this repository's default branch, and fails closed if that file is missing, has
+no entry for the archive, or does not match. The checksum source is **pinned** to
+`reolink/reolink-cli`; `REOLINK_REPO` and `REOLINK_UPDATE_REPO` change where the
+archive is fetched from, never where it is checked against. A mirror serving
+identical bytes passes; a fork serving its own build does not.
+
+**This is integrity, not authenticity.** It proves the archive is the one whose
+hash was committed. It does not prove who built it. The checksum is written by
+the same release process that produces the archive, so both share one trust root:
+
+| threat | covered |
+|---|---|
+| release asset replaced after publication | yes — the anchor is not in the release |
+| `REOLINK_REPO` pointed at an attacker's repository | yes — the checksum is pinned |
+| archive corrupted in transit | yes |
+| compromised maintainer account committing a matching archive + checksum | **no** |
+| compromised build machine | **no** |
+
+Closing the last two requires a signature or attestation anchored outside the
+release pipeline. We do not have one yet, and we would rather say so here than
+imply a guarantee the code does not make. GitHub build attestation is not
+currently available to this project because releases are not built in GitHub
+Actions — one workspace dependency lives outside this repository, so an Actions
+runner cannot build it.
+
+If you verify downloads by hand, use the committed checksum file, not the
+`SHA256SUMS` attached to the release — see
+[Verifying a download](README.md#verifying-a-download).
+
 ## What this tool does by design
 
 Knowing the intended behaviour makes it easier to tell a bug from a feature:

@@ -4,7 +4,13 @@ You have access to `reolink-cli` for operating Reolink cameras locally. The bina
 
 ## Setup
 
-The user installs `reolink-cli` and `reolink-gateway` once by extracting their release tarball and running `./install.sh`. Both binaries land under `~/.local/bin/`. To upgrade later, the user gets a fresh tarball and re-runs `./install.sh`.
+The user installs `reolink-cli` and `reolink-gateway` once:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh | sh
+```
+
+Both binaries land under `~/.local/bin/`. To upgrade later: `reolink-cli self-update` (macOS/Linux), or re-run the installer.
 
 ```bash
 # Start the gateway (required for most commands)
@@ -16,7 +22,7 @@ reolink-cli device add front-door --host 192.168.x.x --user admin
 
 ## Primary Surface
 
-`reolink-cli` (JSON stdout). Only `device add|list|update|remove|resolve|show`, `config init`, and `discover` work without the gateway. Everything else needs the gateway running.
+`reolink-cli` (JSON stdout). Works **without** the gateway: `device add|list|update|remove|resolve|show`, `config init`, `discover`, `features`, `doctor`, `cache status|clean`. Everything that touches a camera needs the gateway running.
 
 **Envelopes:**
 - CLI: `{ok:true, command, protocol, data}` / `{ok:false, error:{code, message, retryable}}`

@@ -98,8 +98,11 @@ tar -xzf reolink-cli-*.tar.gz && cd reolink-cli-*/ && ./install.sh
 ```
 
 The archive is self-contained: binaries + the skill/plugin + installer +
-`THIRD-PARTY-LICENSES.txt`, and each has a `SHA256SUMS` entry on the Release for
-verification.
+`THIRD-PARTY-LICENSES.txt`.
+
+To verify it, use `checksums/<tag>.sha256` on this repository's default branch,
+**not** the `SHA256SUMS` attached to the release — see
+[Verifying a download](#verifying-a-download) for why the difference matters.
 
 </details>
 
@@ -213,9 +216,14 @@ exactly as the CLI does.
 Prebuilt binaries are published on each [Release](https://github.com/reolink/reolink-cli/releases):
 
 - macOS arm64 (Apple Silicon)
-- Linux x86_64
-- Linux arm64
+- Linux x86_64 and arm64 (glibc)
+- Linux x86_64 and arm64 (musl, statically linked) — Alpine, Home Assistant OS,
+  and slim Docker images, where the glibc archives cannot load at all
 - Windows x86_64
+
+`install.sh` detects musl and picks the right archive; the two lines are
+separate assets (`…-linux-arm64.tar.gz` vs `…-linux-arm64-musl.tar.gz`) so an
+existing install keeps resolving the archive it was installed from.
 
 `self-update` covers macOS and Linux. On Windows it exits with the download
 link instead: the archive is a `.zip`, and a running `.exe` cannot be replaced
@@ -305,9 +313,38 @@ what they do:
 - add the prefix to your user `PATH` if it is missing (Windows)
 
 They are ordinary text files: read them before running, as you should with any
-install script. To skip them entirely, download an archive from the
-[Releases](https://github.com/reolink/reolink-cli/releases) page, verify it with
-`shasum -a 256 -c SHA256SUMS`, and copy the two binaries wherever you like.
+install script.
+
+### Verifying a download
+
+To skip the installers, download an archive from the
+[Releases](https://github.com/reolink/reolink-cli/releases) page and verify it
+against the checksum committed to this repository, then copy the two binaries
+wherever you like:
+
+```bash
+tag=v0.10.6                                   # the release you downloaded
+curl -fsSL -o CHECKSUMS \
+  "https://raw.githubusercontent.com/reolink/reolink-cli/main/checksums/$tag.sha256"
+shasum -a 256 -c CHECKSUMS --ignore-missing    # sha256sum -c on Linux
+```
+
+Use that file, **not** the `SHA256SUMS` attached to the release. Anyone who can
+replace a release asset can regenerate the checksum attached beside it in the
+same API call, so a checksum from the release can only ever detect accidental
+corruption. The committed file sits behind a reviewed pull request and permanent
+history.
+
+**What this does and does not prove.** It proves the archive is the one whose
+hash was committed. It does not prove who built it: the checksum is written by
+the same release process that produces the archive, so an attacker who can
+commit to the default branch can publish a matching pair. Closing that needs a
+signature anchored outside the pipeline, which this project does not yet have —
+tracked in [SECURITY.md](SECURITY.md).
+
+`REOLINK_REPO` changes where the **archive** is downloaded from. It does not
+change where the checksum comes from; that is pinned to `reolink/reolink-cli`,
+so a fork serving its own build fails verification rather than validating itself.
 
 ## Trademarks
 

@@ -8,6 +8,12 @@
 $ErrorActionPreference = 'Stop'
 
 $Repo   = if ($env:REOLINK_REPO)   { $env:REOLINK_REPO }   else { 'reolink/reolink-cli' }
+# NOT overridable, deliberately. Both the archive and the checksum used to come
+# from $Repo, so REOLINK_REPO moved the anchor along with the download and an
+# attacker-supplied repository validated its own archive (GHSA-65x2-w384-qp7j,
+# finding 2). A genuine mirror serves identical bytes and still passes; a fork
+# serving its own build no longer does.
+$ChecksumRepo = 'reolink/reolink-cli'
 $Prefix = if ($env:REOLINK_PREFIX) { $env:REOLINK_PREFIX } else { Join-Path $env:USERPROFILE '.local' }
 $Bin    = Join-Path $Prefix 'bin'
 
@@ -41,13 +47,15 @@ try {
   #
   # Fail closed: no fallback to the release-attached SHA256SUMS, and a tag
   # with no committed checksum file aborts — so a fabricated release does
-  # not install. This is an integrity check, not a signature.
-  Write-Host "==> verifying checksum against the repository"
+  # not install. This is an integrity check, not a signature: it proves the
+  # archive is the one whose hash was committed to $ChecksumRepo, not who
+  # built it.
+  Write-Host "==> verifying checksum against $ChecksumRepo"
   $sumsPath = Join-Path $tmp "CHECKSUMS"
   try {
-    Invoke-WebRequest -Headers $headers -Uri "https://raw.githubusercontent.com/$Repo/main/checksums/$tag.sha256" -OutFile $sumsPath
+    Invoke-WebRequest -Headers $headers -Uri "https://raw.githubusercontent.com/$ChecksumRepo/main/checksums/$tag.sha256" -OutFile $sumsPath
   } catch {
-    throw "no committed checksum file for $tag (checksums/$tag.sha256 on the default branch). Either this release has not been synced yet, or the tag did not come from the release process. Refusing to install."
+    throw "no committed checksum file for $tag (checksums/$tag.sha256 on the default branch of $ChecksumRepo). Either this release has not been synced yet, or the tag did not come from the release process. Refusing to install."
   }
   # Split on whitespace rather than regex-matching the line: the asset name
   # would otherwise be interpolated into a pattern, where one mis-escaped
@@ -67,8 +75,29 @@ try {
   }
   Write-Host "    ok ($expected)"
 
-  Expand-Archive -Path $zip -DestinationPath $tmp -Force
+  # Refuse a hostile archive layout before unpacking (GHSA-65x2-w384-qp7j,
+  # finding 3). Expand-Archive's own traversal behaviour has varied across
+  # PowerShell versions, so the guarantee is made here instead of assumed.
+  $entries = [System.IO.Compression.ZipFile]::OpenRead($zip)
+  try {
+    $bad = $entries.Entries |
+      Where-Object { $_.FullName -match '^([A-Za-z]:)?[\\/]' -or $_.FullName -match '(^|[\\/])\.\.([\\/]|$)' } |
+      Select-Object -First 5 -ExpandProperty FullName
+  } finally { $entries.Dispose() }
+  if ($bad) { throw "archive contains absolute or parent-directory members - refusing to extract:`n$($bad -join "`n")" }
+
+  $unpack = Join-Path $tmp 'unpack'
+  New-Item -ItemType Directory -Force -Path $unpack | Out-Null
+  Expand-Archive -Path $zip -DestinationPath $unpack -Force
   New-Item -ItemType Directory -Force -Path $Bin | Out-Null
+
+  # Derived, not discovered. The archive always unpacks to one directory named
+  # after itself; searching the tree for a filename lets an archive that
+  # carries a second reolink-cli.exe decide which one gets installed and run.
+  $root = Join-Path $unpack ([System.IO.Path]::GetFileNameWithoutExtension($asset))
+  if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+    throw "archive does not unpack to $([System.IO.Path]::GetFileNameWithoutExtension($asset))\ - layout is not what this installer expects"
+  }
   # Windows locks running .exe files, so Copy-Item -Force would fail with
   # "file in use". Stop any reolink process running from $Bin first.
   Get-Process -Name reolink-gateway,reolink-cli -ErrorAction SilentlyContinue |
@@ -80,10 +109,17 @@ try {
   # surface later as `config init` failing to find a file it never mentions.
   # install.sh has always failed loudly here; this is the missing half.
   foreach ($exe in 'reolink-cli.exe', 'reolink-gateway.exe') {
-    $src = Get-ChildItem -Path $tmp -Recurse -Filter $exe -ErrorAction SilentlyContinue |
-           Select-Object -First 1
-    if (-not $src) { throw "$exe not found in the archive" }
-    Copy-Item $src.FullName (Join-Path $Bin $exe) -Force
+    $src = Join-Path $root (Join-Path 'bin' $exe)
+    if (-not (Test-Path -LiteralPath $src -PathType Leaf)) {
+      throw "$exe is not at bin\$exe in the archive - refusing to guess"
+    }
+    # A reparse point here would copy whatever it targets, under a name we then
+    # place on PATH. The archive ships regular files; anything else is not it.
+    $item = Get-Item -LiteralPath $src -Force
+    if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+      throw "bin\$exe in the archive is a reparse point - refusing to install"
+    }
+    Copy-Item -LiteralPath $src (Join-Path $Bin $exe) -Force
   }
 } finally {
   Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

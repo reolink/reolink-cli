@@ -4,6 +4,156 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [Unreleased]
+
+Becomes `## [0.10.7] — <date>` when it ships. Kept unversioned until then so
+the manifests are not carrying a version number no release uses — the daily
+version-sync check compares them against the latest published release, and a
+repository that runs ahead trips the same alarm as one that lags behind.
+
+### Security
+
+Reported privately as GHSA-65x2-w384-qp7j by Bassem Chagra, as a follow-up to
+the report behind 0.10.5's committed-checksum change. Two of the three findings
+were valid as filed; the third was half right, and investigating it turned up a
+worse hole in a path the report did not cover.
+
+- **`self-update` verified nothing at all.** It resolved the latest release,
+  downloaded the archive, unpacked it, and overwrote both binaries — no
+  checksum, no signature — and carried its own `REOLINK_UPDATE_REPO` override
+  with nothing anchoring it. The installers had been given a committed-checksum
+  anchor in 0.10.5; this path had not, and it is the one that runs on every
+  machine that already has the tool, repeatedly, often with `--yes`. It now
+  verifies against the same committed checksum and fails closed. Not in the
+  report — found while checking it.
+
+- **The checksum source followed `REOLINK_REPO`** (finding 2). Both the archive
+  and the checksum were fetched from the overridden repository, so pointing it
+  at another repository meant the archive was validated against *that*
+  repository's own committed checksums: attacker supplies both halves, every
+  check passes, and the installer prints "ok". The checksum source is now pinned
+  to `reolink/reolink-cli` in `install.sh`, `install.ps1` and `self-update`.
+  `REOLINK_REPO` still moves the download, so a mirror serving identical bytes
+  works; a fork serving its own build no longer validates itself.
+
+- **A crafted archive could choose which binary got installed** (finding 3).
+  The binaries were located with `find "$tmp" -name reolink-cli | head -n1`,
+  which searches the whole extraction tree and takes whatever the walk reaches
+  first — so an archive carrying a second `reolink-cli` under a directory
+  sorting earlier won, and that file was then made executable and run.
+  Reproduced with such an archive before fixing. All three paths now derive the
+  directory name from the asset name and read `bin/<name>` from it, and refuse
+  a symlink or reparse point in that position.
+
+  The other half of that finding — that `..` and absolute members could write
+  outside the extraction directory — did **not** reproduce: BSD tar refuses `..`
+  and exits non-zero, GNU/busybox tar strips the prefix and keeps the file
+  inside the destination. A pre-scan that refuses both member types was added
+  anyway, so the guarantee comes from our code rather than from whichever tar
+  is installed.
+
+- **The README told manual verifiers to use the anchor it had just discredited**
+  (finding 4). Two passages pointed at the release-attached `SHA256SUMS` while a
+  third explained why that file cannot be trusted. All now point at
+  `checksums/<tag>.sha256`, with a worked example.
+
+- **`SECURITY.md` now states what verification does and does not prove**, as a
+  table of covered and uncovered threats. The uncovered ones are a compromised
+  maintainer account and a compromised build machine: the checksum is written by
+  the same pipeline that builds the archive, so integrity here is not
+  authenticity. Closing that needs a signature anchored outside the pipeline,
+  which this project does not have yet — GitHub build attestation is not
+  currently possible because releases are not built in GitHub Actions.
+
+### Added
+
+- **Statically linked musl builds for Linux x86_64 and arm64** (#54).
+  `reolink-cli-<ver>-external-linux-arm64-musl.tar.gz` and its x86_64 sibling
+  join the release. Alpine and the distributions built on it — Home Assistant
+  OS is the one that raised this — have no glibc, so the existing Linux
+  archives could not merely run badly there, they could not load at all:
+  `Error relocating ./reolink-cli: __res_init: symbol not found`. The musl
+  archives are static and need no runtime at all.
+
+  `install.sh` detects musl (loader path, with `ldd --version` as a second
+  probe) and picks the right archive; `self-update` resolves the musl archive
+  when the running binary is a musl build, which it can only know at compile
+  time — `env::consts` reports `linux`/`aarch64` for both C libraries, and a
+  musl install that updated itself into a glibc binary would be unable to
+  start.
+
+  x86_64 is included although only arm64 was asked for. Adding musl detection
+  to the installer and then publishing one of the two architectures would mean
+  x86_64 Alpine detects musl and finds no archive — a worse failure than not
+  detecting it at all.
+
+  These are additions. The glibc archives keep their names, because an existing
+  install reconstructs the same filename it came from when it self-updates.
+
+- **`discover` now reports each device's `mac` and hardware model** (#36).
+  Asked for by the reporter of the merge bug — a MAC is what lets you line
+  eleven cameras up against DHCP leases, and the model is useful for the
+  devices that do not answer ONVIF, which is most of them out of the box.
+
+  Both were already in the broadcast reply and were being read past: the
+  layout is `net_scan_devinfo_t` from the vendor SDK header, `cMac[32]` at
+  offset 164 and `cMouduleType[32]` at 196. The model is published as a
+  `reolink-lan://hardware/<model>` scope, mirroring ONVIF's
+  `onvif://www.onvif.org/hardware/<model>`, so "what model is this" has one
+  place to look whichever probe answered. `mac` merges into the ONVIF record
+  like `uid` does, and never overwrites an existing value.
+
+  The `access_key` in the same reply stays unread. It is a credential, it does
+  not help identify anything, and the reply is an unauthenticated LAN broadcast
+  whose contents end up in logs and agent transcripts. A test asserts it does
+  not appear in the output.
+
+### Fixed
+
+- **`REOLINK_PASSWORD` triggered the warning telling you not to put passwords
+  on the command line.** `--password` reads that environment variable, so by
+  the time the value arrived it was indistinguishable from one typed on argv,
+  and the check warned for both — telling anyone following the documented safe
+  path to stop doing exactly what they were doing, and printing a second,
+  duplicate warning for the people who really were on argv. The remaining check
+  reads the actual argv, so it can tell the difference. `--password` on the
+  command line still warns, once.
+
+- **`device import` ignored the friendly name of any device without ONVIF.**
+  The scope lookup only understood `onvif://www.onvif.org/<key>/`, but the
+  Reolink broadcast publishes the name as `reolink-lan://name/…` — so on the
+  models that ship with ONVIF off, which is most of them, imported cameras were
+  described as "Discovered via lanUdp" and aliased off their IP address. 0.10.6
+  had stopped `discover` from throwing that name away; the one command that
+  would use it was not looking where it is kept. The lookup now accepts either
+  scheme, ONVIF first, so registries that already import keep their aliases
+  unchanged.
+
+- **`AGENTS.md` and `GEMINI.md` still described a private-vendor tarball.**
+  They told agents to "get a fresh release tarball from their vendor" and
+  stated there was "no in-place network upgrade" — while line 131 of the same
+  file documented `reolink-cli self-update`, which does exactly that. The
+  troubleshooting table also documented an error message,
+  `no prebuilt binary for <os>-<arch>`, that appears in neither installer; the
+  real ones are `unsupported OS` / `unsupported arch`. Both files now describe
+  the one-line installer and `self-update`, and the table lists the strings the
+  installers actually print, plus the musl symptom.
+
+- **`GEMINI.md` had the stale "works without the gateway" list**, the one
+  corrected in `SKILL.md` a release earlier: `features`, `doctor` and
+  `cache status|clean` need no gateway either, and they are what an agent
+  reaches for first. One copy had been fixed and the other had not, which is
+  the whole problem in miniature.
+
+### Changed
+
+- **The skill's install snippet is now a call to `install.sh`** rather than its
+  own copy of the download logic. That copy was the fourth place platform
+  detection lived, it had already drifted once (#43), and — the reason this is
+  a fix and not tidying — it verified nothing it downloaded. `install.sh`
+  checks the archive against the checksum committed to this repository and
+  refuses to install on a mismatch.
+
 ## [0.10.6] — 2026-07-31
 
 Most of this release came from issues and pull requests opened here.
