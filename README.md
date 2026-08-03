@@ -77,9 +77,14 @@ curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh
 ```
 
 ```powershell
-# Windows (PowerShell)
-iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 | iex
+# Windows — works from PowerShell or the Command Prompt
+powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 | iex"
 ```
+
+`iwr` and `iex` are PowerShell aliases, so the shorter
+`iwr … | iex` only works if you are already in PowerShell. Pasted into the
+Command Prompt it fails with `'iwr' is not recognized`, which does not hint at
+the cause — hence the longer form above, which works in both.
 
 Already installed? On macOS/Linux, upgrade in place with
 `reolink-cli self-update --yes`. On Windows, re-run the installer

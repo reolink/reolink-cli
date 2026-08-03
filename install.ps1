@@ -1,6 +1,15 @@
 # reolink-cli one-line installer (Windows).
 #
+# From PowerShell or the Command Prompt:
+#
+#   powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 | iex"
+#
+# From PowerShell only (iwr/iex are PowerShell aliases; in cmd.exe this fails
+# with "'iwr' is not recognized", which does not hint at the cause):
+#
 #   iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 | iex
+#
+# Runs on Windows PowerShell 5.1 and PowerShell 7.
 #
 # Downloads the latest release for Windows x64, installs it to
 # %USERPROFILE%\.local\bin, adds it to your user PATH, and initializes config.
@@ -88,6 +97,12 @@ which skips the only check that would have caught the problem.
   # Refuse a hostile archive layout before unpacking (GHSA-65x2-w384-qp7j,
   # finding 3). Expand-Archive's own traversal behaviour has varied across
   # PowerShell versions, so the guarantee is made here instead of assumed.
+  # Windows PowerShell 5.1 — `powershell.exe`, the default on Windows — does not
+  # load this assembly until something asks for it, while PowerShell 7 has it
+  # already. Without this line the type lookup below fails and the installer
+  # aborts before touching anything, on the exact shell most users are running.
+  # Harmless where it is already loaded.
+  Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
   $entries = [System.IO.Compression.ZipFile]::OpenRead($zip)
   try {
     $bad = $entries.Entries |
