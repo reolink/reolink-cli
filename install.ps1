@@ -71,7 +71,17 @@ try {
   if (-not $expected) { throw "checksums/$tag.sha256 has no entry for $asset - refusing to install" }
   $actual = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLower()
   if ($actual -ne $expected) {
-    throw "checksum mismatch for $asset`n  expected $expected`n  actual   $actual`nThe download does not match the checksum committed to the repository. Nothing was installed."
+    throw @"
+checksum mismatch for $asset
+  expected $expected
+  actual   $actual
+The download does not match the checksum committed to $ChecksumRepo. Nothing was installed.
+
+A truncated or proxy-mangled download is the ordinary cause, so retrying is worth one attempt.
+If it fails again, stop and report it at https://github.com/$ChecksumRepo/security/advisories/new
+- do not work around it by pointing REOLINK_REPO elsewhere or downloading the archive by hand,
+which skips the only check that would have caught the problem.
+"@
   }
   Write-Host "    ok ($expected)"
 

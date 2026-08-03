@@ -26,6 +26,17 @@ install anything that does not match. A hand-rolled `curl | tar` skips that
 check entirely. It installs both binaries to `~/.local/bin`, runs
 `config init`, and prints the PATH line if the directory is not on PATH yet.
 
+**If it refuses with a checksum mismatch**, retry once — a truncated download is
+the ordinary cause. If it fails again, report it and stop; do not point
+`REOLINK_REPO` at another repository or fetch the archive by hand to get past
+it. There is deliberately no flag to skip verification.
+
+**On Home Assistant OS**, install inside the `homeassistant` core container
+rather than on the host: that is where `shell_command` runs, and it is aarch64
+Alpine, so it needs the musl build the installer selects automatically. Which
+build you have is not in `--version`; read it with
+`file "$(command -v reolink-cli)"`, where "statically linked" means musl.
+
 Windows: download the `...-windows-x86_64.zip` from the Releases page and put
 `bin\` on PATH. Then `reolink-cli config init`.
 
