@@ -77,8 +77,21 @@ if [ "$os" = linux ]; then
 fi
 
 # Optional bearer token (private repo only); public access is anonymous.
-AUTH=""
-[ -n "${GITHUB_TOKEN:-}" ] && AUTH="Authorization: Bearer $GITHUB_TOKEN"
+#
+# The header goes to curl on **stdin**, never on the command line. argv is
+# world-readable through `ps`, so any other user on the machine could lift
+# GITHUB_TOKEN for as long as the request runs. `self_update.rs` already refuses
+# to do this and says why; this script was doing the opposite at three call
+# sites, in the same project, against the same threat.
+#
+# `printf | curl` rather than a heredoc on curl's own stdin: this script is
+# routinely run as `curl … | sh`, where the shell's stdin *is* the script. A
+# command that reads stdin there would eat the rest of the script.
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  curl_gh() { printf 'Authorization: Bearer %s\n' "$GITHUB_TOKEN" | curl -H @- "$@"; }
+else
+  curl_gh() { curl "$@"; }
+fi
 
 if [ "$REPO" != "$CHECKSUM_REPO" ]; then
   say "note: downloading from $REPO, but verifying against checksums committed to"
@@ -87,7 +100,7 @@ if [ "$REPO" != "$CHECKSUM_REPO" ]; then
 fi
 
 say "==> resolving latest release of $REPO"
-tag=$(curl -fsSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
+tag=$(curl_gh -fsSL -A reolink-cli-install \
   "https://api.github.com/repos/$REPO/releases/latest" \
   | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
 [ -n "$tag" ] || die "could not resolve the latest release (is the repo public? set GITHUB_TOKEN if it is private)"
@@ -106,7 +119,7 @@ case "$arch" in
   *-musl) hint="
 musl archives start at v0.10.7; earlier releases published glibc builds only." ;;
 esac
-curl -fSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
+curl_gh -fSL -A reolink-cli-install \
   -o "$tmp/pkg.tar.gz" "https://github.com/$REPO/releases/download/$tag/$asset" \
   || die "download failed — see https://github.com/$REPO/releases$hint"
 
@@ -131,7 +144,7 @@ curl -fSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
 # An attacker who can commit to that repository's default branch can publish a
 # matching pair. Nothing here defends against that — see SECURITY.md.
 say "==> verifying checksum against $CHECKSUM_REPO"
-curl -fsSL -A reolink-cli-install ${AUTH:+-H "$AUTH"} \
+curl_gh -fsSL -A reolink-cli-install \
      -o "$tmp/CHECKSUMS" "https://raw.githubusercontent.com/$CHECKSUM_REPO/main/checksums/$tag.sha256" 2>/dev/null \
   || die "no committed checksum file for $tag (checksums/$tag.sha256 on the default branch of $CHECKSUM_REPO).
 Either this release has not been synced yet, or the tag did not come from the
