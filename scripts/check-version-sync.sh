@@ -225,7 +225,17 @@ for a in d.get("assets", []):
     done <<EOF
 $(sed -n 's/^\([0-9a-f]\{64\}\)[[:space:]][[:space:]]*[*]\{0,1\}\(.*\)$/\1 \2/p' "checksums/v${want}.sha256")
 EOF
-    if [ "$mism" -eq 0 ]; then
+    if [ "$checked" -eq 0 ]; then
+      # Zero entries is not agreement, it is an unreadable file. The check used
+      # to print a green "0 assets match what is served" for a checksums file
+      # whose contents no longer parse — while every one-line install using it
+      # would fail closed, because the installer finds no entry for its asset.
+      # A checker that reports success for the state it exists to catch is worse
+      # than no checker.
+      printf '  MISMATCH  %-46s no parseable entries — installs FAIL CLOSED\n' \
+        "checksums/v${want}.sha256"
+      fail=1
+    elif [ "$mism" -eq 0 ]; then
       printf '  ok        %-46s %s assets match what is served\n' "committed hashes vs release" "$checked"
     else
       fail=1
