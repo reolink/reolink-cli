@@ -4,6 +4,104 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.10.8] — 2026-08-04
+
+A security release. Three of these were found by auditing our own code rather
+than by a report, and one of them was introduced by the previous release's
+hardening.
+
+### Security
+
+- **`reolink-cli self-update` verified nothing at all.** It resolved the latest
+  release, downloaded the archive, unpacked it and overwrote both binaries — no
+  checksum, no signature — and carried its own `REOLINK_UPDATE_REPO` override
+  with nothing anchoring it. 0.10.5 gave the installers a committed-checksum
+  anchor and left this path untouched, and it is the one that runs on machines
+  that already have the tool, repeatedly, often with `--yes`. It now verifies
+  against the same committed checksum and fails closed.
+
+- **The gateway's cross-origin guard was bypassable by DNS rebinding.** It
+  compared `Origin` against `Host`, and rebinding makes those agree: an
+  attacker's domain, re-resolved to 127.0.0.1, produces a request where both are
+  `evil.example`. The guard allowed it and `Access-Control-Allow-Origin: *`
+  handed the response back. Not merely a read —
+  `POST /api/cameras/<name>/login` authenticates with the password stored in
+  `aliases.toml`, so any page could mint a token and then read snapshots and the
+  live event stream. The gateway now also requires `Host` to be an address it
+  actually bound to.
+
+  **Consequence, deliberate:** reaching the dashboard from a browser through a
+  custom hostname is refused. Use `localhost`, `127.0.0.1`, or the bound
+  address. Requests without an `Origin` — `curl`, go2rtc, Home Assistant
+  server-side pulls, `<img src>` — are unaffected.
+
+- **The event stream never re-checked its token.** `/api/events` validated once
+  at connect and then streamed forever, so a stream opened with a valid token
+  kept delivering camera events long after that token expired. It now re-checks
+  every 30 s and closes when the token is gone — using a check that deliberately
+  does *not* refresh the inactivity window, or a subscription would renew its
+  own token indefinitely.
+
+- **`self-update`'s scratch directory could be taken over.** It was
+  `create_dir_all` on a predictable `<tmp>/reolink-update-<pid>`, and
+  `create_dir_all` succeeds when the path already exists. Another local user
+  could own that directory and swap the archive in the window between the
+  checksum passing and the two later reads of the same file — installing
+  binaries that were never verified and are then executed. Now created
+  exclusively, mode 0700 at creation, with a random component.
+
+- **A dead hook shipped in every release archive piped an environment-variable
+  URL into a shell.** `plugins/reolink-cli/scripts/ensure-binaries.sh` carried
+  three `curl "$REOLINK_REPO_URL/-/raw/master/scripts/install.sh" | sh` calls
+  with no verification of any kind, against a GitLab-shaped path left over from
+  when this project was private. No manifest registered it and nothing invoked
+  it. Deleted rather than hardened.
+
+- **The tarball's Windows installer could discard your Claude Code settings.**
+  On any read or parse error it fell back to an empty object and wrote that over
+  the file — for `~/.claude/settings.json` that is permissions, hooks, model
+  settings and MCP servers. It now leaves an unreadable file untouched and says
+  so.
+
+- **`GITHUB_TOKEN` was on curl's command line** in `install.sh`, where `ps`
+  makes it readable by every other user on the machine — while `self_update.rs`
+  refused to do exactly that and explained why. The header now goes to curl on
+  stdin.
+
+### Fixed
+
+- **Uninstalling killed every gateway on the machine, not just this install's.**
+  The Windows branch called `taskkill /F /IM reolink-gateway.exe` directly below
+  a comment explaining that it must not, because that is image-name-wide and
+  hits other installations. Same defect as #29 on Unix, fixed there and left
+  standing here. It now filters by executable path, and says which processes it
+  skipped.
+
+- **`setup --uninstall` exited 0 having left `reolink-cli` behind on Windows.**
+  The OS locks a running image so the binary cannot delete itself; that printed
+  a warning and reported success, which is what a script or package manager
+  reads. It now exits non-zero and gives the one command that finishes the job.
+
+- **`self-update` asked for confirmation before checking whether the platform is
+  supported**, so a Windows user consented to an update that was never possible.
+
+- **The cross-origin guard refused a gateway bound to port 80**, because a
+  browser omits the default port and the new `Host` check required one.
+
+- Two independent sources of test-suite flakiness, together failing about one
+  run in four: temp directories named from a clock that is not
+  nanosecond-granular, and an `lsof` latency being reported as a logic failure.
+
+### Documentation
+
+- `SECURITY.md` states what download verification proves and what it does not,
+  and that **any local process able to reach the gateway port can control your
+  cameras** — the boundary is the machine, not the process.
+- The one-line install had no documented uninstall path; `setup --uninstall` is
+  now the primary instruction.
+- `scripts/check-past-findings.py` turns every previously reported defect into
+  an assertion, so they cannot quietly regress.
+
 ## [0.10.7] — 2026-08-03
 
 ### Security
