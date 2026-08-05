@@ -15,5 +15,13 @@
   ],
   "skills": [
     "./skills/reolink-cli"
-  ]
+  ],
+  "mcpServers": {
+    "reolink": {
+      "command": "reolink-cli",
+      "args": [
+        "mcp-server"
+      ]
+    }
+  }
 }
