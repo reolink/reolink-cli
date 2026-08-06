@@ -8,30 +8,32 @@ Uninstall the reolink binaries. **Default behaviour is non-destructive** — kee
 **If `$ARGUMENTS` contains "purge" or "--purge":** use the purge variant.
 **Otherwise:** use the plain uninstall variant.
 
+`--no-interactive` below is not optional padding. Uninstalling refuses to run when stdin is not a terminal unless it is present, and a command you launch is never on a terminal. It is the declaration that the deletion was intended rather than reached by accident — confirm with the user before you send it.
+
 The release tarball ships its own `uninstall.sh` / `uninstall.ps1`. Run them from inside the extracted tarball directory:
 
 **macOS / Linux — plain:**
 
 ```bash
-./uninstall.sh
+./uninstall.sh --no-interactive
 ```
 
 **macOS / Linux — purge:**
 
 ```bash
-./uninstall.sh --purge
+./uninstall.sh --purge --no-interactive
 ```
 
 **Windows — plain:**
 
 ```powershell
-.\uninstall.ps1
+.\uninstall.ps1 --no-interactive
 ```
 
 **Windows — purge:**
 
 ```powershell
-.\uninstall.ps1 --purge
+.\uninstall.ps1 --purge --no-interactive
 ```
 
 If the user no longer has the tarball on disk, falling back to manual removal works too:

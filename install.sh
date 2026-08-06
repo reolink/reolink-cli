@@ -49,6 +49,13 @@ esac
 case "$arch" in
   arm64|aarch64) arch=arm64 ;;
   x86_64|amd64)  arch=x86_64 ;;
+  # 32-bit ARM — a Raspberry Pi running a 32-bit OS. armv7 covers Pi 2/3/4;
+  # armv6 covers the Pi 1 and Zero, whose CPUs cannot execute armv7 code at all,
+  # so these are two archives and not one. `uname -m` reports the kernel's
+  # architecture: a 64-bit kernel with a 32-bit userland says aarch64 and lands
+  # on the arm64 archive above, which is correct — that userland runs it.
+  armv7l|armv7) arch=armv7 ;;
+  armv6l|armv6) arch=armv6 ;;
   *) die "unsupported arch '$arch' — see https://github.com/$REPO/releases" ;;
 esac
 

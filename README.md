@@ -231,11 +231,20 @@ Prebuilt binaries are published on each [Release](https://github.com/reolink/reo
 - Linux x86_64 and arm64 (glibc)
 - Linux x86_64 and arm64 (musl, statically linked) — Alpine, Home Assistant OS,
   and slim Docker images, where the glibc archives cannot load at all
+- Linux armv7 and armv6 — a Raspberry Pi on a **32-bit** OS. armv7 covers the
+  Pi 2/3/4; armv6 covers the Pi 1 and Zero, whose CPUs cannot execute armv7 code
+  at all. Built against glibc 2.28, so Raspberry Pi OS Buster and later work.
 - Windows x86_64
 
-`install.sh` detects musl and picks the right archive; the two lines are
-separate assets (`…-linux-arm64.tar.gz` vs `…-linux-arm64-musl.tar.gz`) so an
-existing install keeps resolving the archive it was installed from.
+A 64-bit Pi OS reports `aarch64` and gets the arm64 archive; the 32-bit archives
+are for a 32-bit userland. If you are unsure, `uname -m` decides it — `armv7l`
+or `armv6l` means 32-bit.
+
+`install.sh` detects both the C library and the ARM revision and picks the right
+archive; each is a separate asset (`…-linux-arm64.tar.gz` vs
+`…-linux-arm64-musl.tar.gz` vs `…-linux-armv7.tar.gz`) so an existing install
+keeps resolving the archive it was installed from — including `self-update`,
+which replaces a build with its own kind rather than guessing from the CPU.
 
 **Which one did I get?** `--version` does not say, so read it off the binary:
 

@@ -156,7 +156,15 @@ reolink-cli setup --uninstall --no-interactive --agents none
 ```
 
 It stops gateways started from this install prefix, removes both binaries, and
-keeps config, aliases, cache and rules. Add `--purge` to wipe those too.
+keeps config, aliases, cache and rules. Add `--purge` to wipe those too — that
+deletes the camera registry and cannot be undone, so confirm it with the user
+first.
+
+`--no-interactive` is load-bearing, not decoration. Off a terminal — which is
+every command an agent or a script launches — the uninstall refuses without it.
+It is how the command tells the difference between a deletion someone meant and
+one that a tool merely walked into; a documentation checker that executed the
+commands it found in code blocks once wiped an installation this way.
 
 On Windows it will report that it could not remove `reolink-cli.exe` and exit
 non-zero: the OS locks a running image, so the binary running the uninstall
