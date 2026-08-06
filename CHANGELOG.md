@@ -6,7 +6,7 @@ builds published as GitHub Releases.
 
 ## [0.11.0] — 2026-08-06
 
-Five reported issues, two new platforms, and one command that could delete your
+Six reported issues, two new platforms, and one command that could delete your
 installation without asking.
 
 ### Added
