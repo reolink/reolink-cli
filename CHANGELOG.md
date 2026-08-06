@@ -31,6 +31,16 @@ installation without asking.
   the userland that has to run the binary. A genuine 64-bit userland is
   unaffected and still gets the arm64 archive.
 
+- **A UID target is resolved on the LAN before falling back to P2P.** A camera
+  whose router has no internet access can never register with the relay, so
+  connecting by UID failed outright (`p2p error: -7`, the relay answering "no
+  such UID") even with the camera sitting on the same subnet. The gateway now
+  broadcasts for the UID first, remembers the answer for 60 seconds, and
+  connects over TCP when it finds one; P2P remains the path for a UID that
+  nothing on the LAN claims. The discovery broadcast also binds its source
+  address per interface, so a host with several networks asks on all of them
+  rather than whichever the routing table happened to pick.
+
 - **`vod search` reports `scanned`** — how many recordings the camera returned
   before `--type` filtering. `--limit` is applied by the camera on the
   *unfiltered* set, so a narrow filter can match 2 of 20 scanned while more
