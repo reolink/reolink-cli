@@ -1,5 +1,5 @@
 ---
-description: List registered Reolink aliases (from ~/.config/reolink/aliases.toml)
+description: List registered Reolink aliases (from ~/.config/reolink-cli/aliases.toml)
 ---
 
 Run `reolink-cli device list --output json` and print each alias on one line as:
