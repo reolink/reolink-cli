@@ -4,6 +4,154 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.11.0] — 2026-08-06
+
+Five reported issues, two new platforms, and one command that could delete your
+installation without asking.
+
+### Added
+
+- **32-bit Raspberry Pi builds — `linux-armv7` and `linux-armv6`** (#73). armv7
+  covers a Pi 2/3/4 on a 32-bit OS; armv6 covers the Pi 1 and Zero, whose CPUs
+  cannot execute armv7 code at all. They are two separate archives for that
+  reason, and `install.sh` and `self-update` each resolve the one matching the
+  build they are replacing rather than guessing from the CPU.
+
+  Built against glibc 2.28, so Raspberry Pi OS Buster and later work — the
+  default toolchain target would have been 2.34 and excluded everything before
+  Bookworm. Verified on Raspberry Pi OS armv6 (`uname -m` = `armv6l`), on Debian
+  Buster and Bullseye armv7, and by confirming the armv7 binary does refuse to
+  run on an ARMv6 CPU, which is why the two archives exist.
+
+  `uname -m` is not the deciding answer on a Pi, and `install.sh` no longer
+  treats it as one. 32-bit Raspberry Pi OS has booted a 64-bit kernel by default
+  since Bullseye, so it reports `aarch64` while the userland is 32-bit and
+  carries no arm64 loader — the arm64 archive cannot start there at all. The
+  installer reads `getconf LONG_BIT` and the loader on disk, which answer for
+  the userland that has to run the binary. A genuine 64-bit userland is
+  unaffected and still gets the arm64 archive.
+
+- **`vod download` takes several recordings at once** (#72), fetching them over
+  one device connection instead of one per file:
+
+  ```bash
+  reolink-cli -c my-cam vod download 0120260803025316 0120260803025332 0120260803025401
+  ```
+
+  A download deliberately avoids the shared session — a transfer running for
+  minutes would stall every other command against that camera — so each
+  invocation otherwise pays its own connect and login, measured at about a
+  quarter of a second per file. Naming them together pays it once. Each
+  recording is written to `<name>.<codec>` in the current directory; `--file`
+  names a single destination and is rejected with several names.
+
+  A request for one recording is unchanged, byte for byte, including its
+  `Content-Disposition`. Only a multi-file request switches to the framed
+  `application/vnd.reolink.vod-batch` response, so nothing that already reads
+  `/api/vod/download` is affected.
+
+- **A UID target is resolved on the LAN before falling back to P2P.** A camera
+  whose router has no internet access can never register with the relay, so
+  connecting by UID failed outright (`p2p error: -7`, the relay answering "no
+  such UID") even with the camera sitting on the same subnet. The gateway now
+  broadcasts for the UID first, remembers the answer for 60 seconds, and
+  connects over TCP when it finds one; P2P remains the path for a UID that
+  nothing on the LAN claims. The discovery broadcast also binds its source
+  address per interface, so a host with several networks asks on all of them
+  rather than whichever the routing table happened to pick.
+
+- **`vod search` reports `scanned`** — how many recordings the camera returned
+  before `--type` filtering. `--limit` is applied by the camera on the
+  *unfiltered* set, so a narrow filter can match 2 of 20 scanned while more
+  exist further back. Without the number that reads as "there are only 2".
+
+### Fixed
+
+- **`vod search --type` did not filter** (#74). The request carried the type all
+  along and the camera ignored it, so `--type people` returned every motion
+  recording in the window. Filtering now happens on our side, which also fixes
+  it for the MCP tools and the HTTP API. A recording carries a set of tags and
+  so does the request: `--type people` keeps one tagged `md,people`, and asking
+  for several types is a union.
+
+- **`--output text` printed JSON for `device list`, `device show` and
+  `cache status`** (#69) — the commands most likely to be wanted as a table. The
+  text renderer only ever handled objects of plain values; it now renders a list
+  of records as an aligned table and expands nested sections, so any future list
+  command gets the same treatment. Columns that are empty in every row are
+  dropped rather than padded.
+
+- **`config init` pointed at a directory the tool does not read** (#68). The
+  generated files told you to copy them to `reolink/`, while the config
+  directory is `reolink-cli/` and `config init` had already written them to the
+  right place. The same stale path appeared in `--help` for the event-monitor
+  rules and in the instructions the MCP server hands every agent at startup,
+  where it also still called `--camera` by its old name. The repo-side half of
+  this was reported and fixed by **@ch-bas** in #71.
+
+- **`disabled = true` was ignored by `--all-devices` and `--tag`** (#70). Only
+  `device list` honoured it, so a camera you had deliberately taken out of
+  service — or one of the examples `config init` seeds — was still contacted by
+  every fan-out. A fresh install running `--all-devices ping` opened TCP
+  connections to `192.168.1.41`, an address the user never chose and which on a
+  real network belongs to somebody else. Fan-out selectors now skip disabled
+  cameras; naming one with `--camera` still works, because asking for a camera
+  by name is intent and `disabled` is not a lock. The seeded examples ship
+  disabled as well.
+
+- **`device resolve --camera <name>` reported a disabled camera as enabled**,
+  and its description and tags as empty, while `--cameras <name>` reported all
+  three correctly. Two paths, one question, different answers.
+
+### Security
+
+- **`setup --uninstall` had no confirmation of any kind.** Not a prompt, not a
+  flag check — any process that reached the command ran it to completion, and
+  with `--purge` that removes both binaries, your config, your camera registry,
+  the agent skill directories and the Claude Code plugin registration. It needs
+  no config, no credentials and no terminal, so nothing else stood in the way.
+  This is not hypothetical: a documentation checker that executed the commands
+  it found in fenced code blocks wiped a developer's whole installation.
+
+  Uninstalling now refuses when stdin is not a terminal unless `--no-interactive`
+  is present. That flag is the declaration that the deletion was meant, and it
+  is the flag `AGENTS.md` has told agents to pass all along — until now nothing
+  read it, so the documentation described a confirmation step that did not
+  exist. The check reads stdin rather than stdout, so `setup --uninstall | tee
+  log.txt` is still a person at a keyboard and still works in one shot.
+
+  **If you script an uninstall, add `--no-interactive`.** Slash commands and the
+  tarball's `uninstall.sh` / `uninstall.ps1` wrappers pass it through.
+
+- **`scripts/check-doc-commands.py` executed every command it found in the
+  docs.** It described itself as running them "through the argument parser" and
+  leaned on redirected config paths to make them harmless, but an explicit flag
+  beats an environment variable, and a command needing no config never went near
+  the redirect. Anyone who cloned this repository and ran it got their own
+  installation removed. It now passes `--parse-only`, which validates the
+  argument vector and exits before dispatch, and refuses to start against a
+  binary too old to support it.
+
+### Notes
+
+`--parse-only` is a hidden flag for that checker. It is an assertion about a
+command line, not a mode of operation, and it is deliberately absent from
+`--help`.
+
+### Platforms
+
+| | |
+|---|---|
+| macOS | arm64 (Apple Silicon) |
+| Linux glibc | x86_64, arm64 |
+| Linux musl | x86_64, arm64 — Alpine, Home Assistant OS, slim Docker images |
+| Linux 32-bit ARM | armv7, armv6 — Raspberry Pi on a 32-bit OS |
+| Windows | x86_64 |
+
+Verify a download against `checksums/v0.11.0.sha256` on `main`, **not** the
+`SHA256SUMS` attached to the release — see
+[Verifying a download](https://github.com/reolink/reolink-cli#verifying-a-download).
+
 ## [0.10.8] — 2026-08-04
 
 A security release. Three of these were found by auditing our own code rather

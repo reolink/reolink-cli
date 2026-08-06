@@ -17,10 +17,21 @@ a bit order, a deprecation note, a claim about Windows. Those need a reader.
 Reducing that second class is a docs-design job (point at `--help` instead of
 restating it), not something a checker can do.
 
-Safety: commands run against TEST-NET-1 (192.0.2.0/24, unroutable by RFC 5737)
-with the gateway pointed at a closed port and config/registry paths redirected
-into a temp dir, so a command that parses cleanly fails at the first connection
-attempt without touching a device or the real config.
+Safety: every command is passed to the binary with `--parse-only`, which makes
+it validate the argument vector and exit before dispatch. Nothing a doc contains
+can run.
+
+That is not how this started, and the first version did real damage. It executed
+each documented line for real and leaned on redirected config paths to make them
+fail harmlessly. Two holes: explicit flags beat environment variables in clap, so
+anything documented with its own `--gateway-addr` or `--camera` sailed past the
+redirect; and anything needing no config at all never went near it. The docs
+contain `setup --uninstall --purge`, `self-update --yes` and `gateway start
+--open`. In one nineteen-minute run it uninstalled the developer's own copy,
+deleted the camera registry, left a gateway listening on 0.0.0.0, and opened
+thirty-nine browser tabs. The env vars below are kept as a second layer, but the
+guarantee now comes from `--parse-only` — a checker must not be able to perform
+what it is checking.
 """
 import argparse
 import os
@@ -82,6 +93,9 @@ def main() -> int:
     args = ap.parse_args()
 
     with tempfile.TemporaryDirectory() as tmp:
+        # Second layer only. `--parse-only` is what actually keeps these
+        # commands from running; see the module docstring for what happened when
+        # this was the whole defence.
         env = dict(
             os.environ,
             REOLINK_CAMERAS_FILE=f"{tmp}/aliases.toml",
@@ -89,6 +103,41 @@ def main() -> int:
             REOLINK_GATEWAY_ADDR="127.0.0.1:1",
             REOLINK_PASSWORD="placeholder",
         )
+
+        # Refuse to start against a binary that predates `--parse-only`. Such a
+        # binary rejects the flag, so nothing would execute — but every one of
+        # the thousands of documented commands would be reported as a defect,
+        # and a wall of false findings is how a checker gets switched off.
+        #
+        # The test is the exit status, not the wording of an error. A binary
+        # that understands the flag parses `device list` and exits 0 before
+        # dispatch; one that does not fails argument parsing and exits non-zero.
+        # Matching on the message instead would fail *open* the moment clap
+        # rephrased it — and failing open here means executing every command in
+        # the documentation, which is the accident this whole change exists to
+        # prevent.
+        try:
+            probe = subprocess.run(
+                [args.cli, "--parse-only", "device", "list"],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+        except (FileNotFoundError, PermissionError) as e:
+            # A traceback here reads as "the checker is broken"; it usually just
+            # means the tree has not been built. Say which.
+            print(f"cannot run {args.cli!r}: {e}", file=sys.stderr)
+            return 2
+        if probe.returncode != 0:
+            detail = (probe.stderr or probe.stdout or "").strip().splitlines()
+            print(
+                f"{args.cli} does not accept --parse-only (exit "
+                f"{probe.returncode}: {detail[0] if detail else 'no output'}).\n"
+                "Build the current tree first. Refusing to run: without that "
+                "flag this script executes every command it finds.",
+                file=sys.stderr,
+            )
+            return 2
         checked = skipped = 0
         findings = []
         for root in args.roots:
@@ -109,7 +158,7 @@ def main() -> int:
                     checked += 1
                     try:
                         r = subprocess.run(
-                            [args.cli, *toks],
+                            [args.cli, "--parse-only", *toks],
                             capture_output=True,
                             text=True,
                             timeout=20,

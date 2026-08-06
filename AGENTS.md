@@ -156,7 +156,15 @@ reolink-cli setup --uninstall --no-interactive --agents none
 ```
 
 It stops gateways started from this install prefix, removes both binaries, and
-keeps config, aliases, cache and rules. Add `--purge` to wipe those too.
+keeps config, aliases, cache and rules. Add `--purge` to wipe those too — that
+deletes the camera registry and cannot be undone, so confirm it with the user
+first.
+
+`--no-interactive` is load-bearing, not decoration. Off a terminal — which is
+every command an agent or a script launches — the uninstall refuses without it.
+It is how the command tells the difference between a deletion someone meant and
+one that a tool merely walked into; a documentation checker that executed the
+commands it found in code blocks once wiped an installation this way.
 
 On Windows it will report that it could not remove `reolink-cli.exe` and exit
 non-zero: the OS locks a running image, so the binary running the uninstall
@@ -230,7 +238,7 @@ The skill carries no version of its own — it is distributed with the release a
 | `checksum mismatch for …` during install or `self-update` | Usually a truncated or proxy-mangled download | Retry once. If it fails again, **stop** and report it at the repository's security advisories page. Do not point `REOLINK_REPO` elsewhere or fetch the archive by hand — both skip the check that just fired |
 | `no committed checksum file for <tag>` | A release published before its checksums were synced | Not something the user can fix; report it. The installers fail closed by design, so there is no flag to skip verification |
 | Windows: `'iwr' is not recognized as an internal or external command` | The one-liner was pasted into the Command Prompt; `iwr`/`iex` are PowerShell aliases | Use the shell-agnostic form: `powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 -UseBasicParsing \| iex"` |
-| Windows: the install hangs, or fails with `Access is denied` / `拒绝访问` before downloading | `Invoke-WebRequest` defaults to the Internet Explorer engine for DOM parsing on Windows PowerShell 5.1, which stalls when IE's first-launch configuration never ran | Add `-UseBasicParsing` (the documented command now has it). Harmless on PowerShell 7, where it is already the default |
+| Windows: the install hangs, or fails with `Access is denied` (or the same message in your system language) before downloading | `Invoke-WebRequest` defaults to the Internet Explorer engine for DOM parsing on Windows PowerShell 5.1, which stalls when IE's first-launch configuration never ran | Add `-UseBasicParsing` (the documented command now has it). Harmless on PowerShell 7, where it is already the default |
 | `gateway connect failed: Connection refused` | Gateway process not running | The CLI's error message prints the exact start command — paste and run it |
 | Skill referenced commands that don't exist in `reolink-cli --help` | Agent loaded a stale cached skill (older than the binary) | Have the user run their agent's plugin-refresh command (Claude Code: `/plugin update reolink-cli`) |
 | `reolink-cli --version` prints an older number than expected | Stale binary — no upgrade fired | `reolink-cli self-update` (macOS/Linux), or re-run the one-line installer |
