@@ -47,13 +47,30 @@ case "$os" in
   *) die "unsupported OS '$os' — see https://github.com/$REPO/releases" ;;
 esac
 case "$arch" in
-  arm64|aarch64) arch=arm64 ;;
+  # `uname -m` answers for the *kernel*, and on ARM the two can disagree: a
+  # 64-bit kernel with a 32-bit userland reports aarch64 while having no arm64
+  # loader, so the arm64 archive cannot start at all. That is not a corner case
+  # — it is the default on 32-bit Raspberry Pi OS from Bullseye onward, which
+  # sets `arm_64bit=1`. `getconf LONG_BIT` and the loader on disk answer for the
+  # userland, which is what actually has to run this. Measured: a 32-bit armhf
+  # root has LONG_BIT=32 and no `ld-linux-aarch64.so.1`; a real arm64 root has
+  # LONG_BIT=64 and does. Two probes because `getconf` is absent from some
+  # minimal images.
+  #
+  # Hardware that can boot a 64-bit kernel is ARMv8 at least, so armv7 is the
+  # right fallback here and armv6 never is.
+  arm64|aarch64)
+    if [ "$os" = linux ] && { [ "$(getconf LONG_BIT 2>/dev/null)" = 32 ] ||
+         { [ ! -e /lib/ld-linux-aarch64.so.1 ] && [ -e /lib/ld-linux-armhf.so.3 ]; }; }; then
+      arch=armv7
+    else
+      arch=arm64
+    fi
+    ;;
   x86_64|amd64)  arch=x86_64 ;;
-  # 32-bit ARM — a Raspberry Pi running a 32-bit OS. armv7 covers Pi 2/3/4;
-  # armv6 covers the Pi 1 and Zero, whose CPUs cannot execute armv7 code at all,
-  # so these are two archives and not one. `uname -m` reports the kernel's
-  # architecture: a 64-bit kernel with a 32-bit userland says aarch64 and lands
-  # on the arm64 archive above, which is correct — that userland runs it.
+  # 32-bit ARM — a Raspberry Pi running a 32-bit OS on a 32-bit kernel too.
+  # armv7 covers Pi 2/3/4; armv6 covers the Pi 1 and Zero, whose CPUs cannot
+  # execute armv7 code at all, which is why these are two archives and not one.
   armv7l|armv7) arch=armv7 ;;
   armv6l|armv6) arch=armv6 ;;
   *) die "unsupported arch '$arch' — see https://github.com/$REPO/releases" ;;

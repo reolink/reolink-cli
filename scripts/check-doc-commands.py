@@ -108,17 +108,33 @@ def main() -> int:
         # binary rejects the flag, so nothing would execute — but every one of
         # the thousands of documented commands would be reported as a defect,
         # and a wall of false findings is how a checker gets switched off.
-        probe = subprocess.run(
-            [args.cli, "--parse-only", "device", "list"],
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        if "--parse-only" in (probe.stderr or ""):
+        #
+        # The test is the exit status, not the wording of an error. A binary
+        # that understands the flag parses `device list` and exits 0 before
+        # dispatch; one that does not fails argument parsing and exits non-zero.
+        # Matching on the message instead would fail *open* the moment clap
+        # rephrased it — and failing open here means executing every command in
+        # the documentation, which is the accident this whole change exists to
+        # prevent.
+        try:
+            probe = subprocess.run(
+                [args.cli, "--parse-only", "device", "list"],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+        except (FileNotFoundError, PermissionError) as e:
+            # A traceback here reads as "the checker is broken"; it usually just
+            # means the tree has not been built. Say which.
+            print(f"cannot run {args.cli!r}: {e}", file=sys.stderr)
+            return 2
+        if probe.returncode != 0:
+            detail = (probe.stderr or probe.stdout or "").strip().splitlines()
             print(
-                f"{args.cli} does not support --parse-only; build the current "
-                "tree first. Refusing to run: without it this script executes "
-                "every command it finds.",
+                f"{args.cli} does not accept --parse-only (exit "
+                f"{probe.returncode}: {detail[0] if detail else 'no output'}).\n"
+                "Build the current tree first. Refusing to run: without that "
+                "flag this script executes every command it finds.",
                 file=sys.stderr,
             )
             return 2

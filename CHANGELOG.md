@@ -23,8 +23,13 @@ installation without asking.
   Buster and Bullseye armv7, and by confirming the armv7 binary does refuse to
   run on an ARMv6 CPU, which is why the two archives exist.
 
-  A 64-bit Pi OS reports `aarch64` and keeps using the arm64 archive. `uname -m`
-  is the deciding answer if you are unsure.
+  `uname -m` is not the deciding answer on a Pi, and `install.sh` no longer
+  treats it as one. 32-bit Raspberry Pi OS has booted a 64-bit kernel by default
+  since Bullseye, so it reports `aarch64` while the userland is 32-bit and
+  carries no arm64 loader — the arm64 archive cannot start there at all. The
+  installer reads `getconf LONG_BIT` and the loader on disk, which answer for
+  the userland that has to run the binary. A genuine 64-bit userland is
+  unaffected and still gets the arm64 archive.
 
 - **`vod search` reports `scanned`** — how many recordings the camera returned
   before `--type` filtering. `--limit` is applied by the camera on the

@@ -236,15 +236,21 @@ Prebuilt binaries are published on each [Release](https://github.com/reolink/reo
   at all. Built against glibc 2.28, so Raspberry Pi OS Buster and later work.
 - Windows x86_64
 
-A 64-bit Pi OS reports `aarch64` and gets the arm64 archive; the 32-bit archives
-are for a 32-bit userland. If you are unsure, `uname -m` decides it — `armv7l`
-or `armv6l` means 32-bit.
+`uname -m` alone does not decide this on a Pi. 32-bit Raspberry Pi OS has booted
+a 64-bit kernel by default since Bullseye, so `uname -m` says `aarch64` while the
+userland is 32-bit and has no arm64 loader — the arm64 archive cannot start
+there. What settles it is the userland:
 
-`install.sh` detects both the C library and the ARM revision and picks the right
-archive; each is a separate asset (`…-linux-arm64.tar.gz` vs
-`…-linux-arm64-musl.tar.gz` vs `…-linux-armv7.tar.gz`) so an existing install
-keeps resolving the archive it was installed from — including `self-update`,
-which replaces a build with its own kind rather than guessing from the CPU.
+```bash
+getconf LONG_BIT    # 64 → arm64 archive;  32 → armv7 (or armv6 on a Pi 1/Zero)
+```
+
+`install.sh` reads that rather than the kernel, alongside the C library and the
+ARM revision, and picks the archive accordingly. Each is a separate asset
+(`…-linux-arm64.tar.gz` vs `…-linux-arm64-musl.tar.gz` vs
+`…-linux-armv7.tar.gz`) so an existing install keeps resolving the archive it
+was installed from — including `self-update`, which replaces a build with its
+own kind rather than guessing from the CPU it happens to be running on.
 
 **Which one did I get?** `--version` does not say, so read it off the binary:
 
