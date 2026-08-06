@@ -31,6 +31,25 @@ installation without asking.
   the userland that has to run the binary. A genuine 64-bit userland is
   unaffected and still gets the arm64 archive.
 
+- **`vod download` takes several recordings at once** (#72), fetching them over
+  one device connection instead of one per file:
+
+  ```bash
+  reolink-cli -c my-cam vod download 0120260803025316 0120260803025332 0120260803025401
+  ```
+
+  A download deliberately avoids the shared session — a transfer running for
+  minutes would stall every other command against that camera — so each
+  invocation otherwise pays its own connect and login, measured at about a
+  quarter of a second per file. Naming them together pays it once. Each
+  recording is written to `<name>.<codec>` in the current directory; `--file`
+  names a single destination and is rejected with several names.
+
+  A request for one recording is unchanged, byte for byte, including its
+  `Content-Disposition`. Only a multi-file request switches to the framed
+  `application/vnd.reolink.vod-batch` response, so nothing that already reads
+  `/api/vod/download` is affected.
+
 - **A UID target is resolved on the LAN before falling back to P2P.** A camera
   whose router has no internet access can never register with the relay, so
   connecting by UID failed outright (`p2p error: -7`, the relay answering "no
