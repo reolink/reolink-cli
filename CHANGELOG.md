@@ -4,6 +4,91 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.12.4] — 2026-08-14
+
+Wi-Fi work, a protocol default that stops guessing, and a data-loss defect in
+redirected setups reported by a user.
+
+### Contract change (read this if you script the CLI)
+
+- **The wire protocol now defaults to `v20` instead of probing.** With no
+  `--protocol` and no `protocol` in the camera entry, the CLI connects as v20
+  directly. Previously it opened an extra TCP round trip to detect v20 vs v30
+  from the device's response magic — and on Wi-Fi that probe was the single
+  most common cause of spurious failures (see below). Cameras that speak v30
+  must now say so: `protocol = "v30"` in the entry, or `--protocol v30`. The
+  probe is still available on demand as `--protocol auto`, which also overrides
+  an entry's declaration — the way out when an entry names the wrong protocol.
+
+- **`wifi set` prints two new lines and `data.new_host` changed meaning.**
+  `phases:` gives per-phase timings and `switch:` states one of three verdicts
+  about the transition. `data.new_host` is now strictly *the host written into
+  the camera entry*, and is `null` whenever `registry_updated` is `false`; it
+  used to carry "the address rediscovery happened to see", which was frequently
+  the address the camera was about to leave. For where a camera ended up, read
+  the `switch:` line or run `discover`.
+
+### Fixed
+
+- **`credentials.key` now lives beside the file whose passwords it protects**
+  (#79, reported by **@ch-bas**). `--cameras-file` / `--config-file` (and their
+  environment variables) were honoured by every data read and write, but the key
+  file was always created in the platform default config directory. The
+  documented backup procedure — copy the registry *and* the key next to it — was
+  therefore impossible to follow in a redirected setup, and restoring on another
+  machine lost every stored password. Each redirected profile is now
+  self-contained, which also means separate `--cameras-file` profiles no longer
+  share one key. Existing installations keep working: if no key sits beside the
+  file, the old location is still read (read-only — the next write puts the key
+  where it belongs).
+
+- **`doctor` inspects the files the CLI is actually using** (#79). It accepted
+  `--cameras-file` / `--config-file` but its `config.toml`, `cameras registry`
+  and `registry perms` checks always looked at the default paths, so under
+  redirection it reported a missing registry while `device list` was reading
+  three cameras from the redirected one. The permissions check — which exists
+  because the registry holds encrypted credentials — now examines the registry
+  in use.
+
+- **Intermittent `route not found: TCP connect timed out` on Wi-Fi.** The
+  pre-login protocol probe gave itself 750 ms, which is shorter than the
+  operating system's first TCP SYN retransmission (1 s on both Windows and
+  Linux). A single lost SYN — routine on Wi-Fi — therefore became a hard
+  failure for a camera that was up and 17 ms away, and it failed an operation
+  whose real connect budget is 10 s. The login path now allows 3 s; `discover`
+  keeps the short budget, because a subnet sweep probes mostly dead addresses.
+  Error messages report the budget actually in force.
+
+- **A camera that changed address no longer fails the first command after the
+  move.** The remembered LAN address for a UID is now re-resolved with a fresh
+  broadcast when it stops answering, instead of being abandoned outright — the
+  camera is almost always still on the same LAN, just somewhere else on it.
+
+- **`wifi set` no longer pins an address onto a camera registered by UID
+  alone.** An entry created with `device add --uid` (no `--host`) states that
+  the address is expected to move; writing the address found after a switch
+  turned that into a fixed host, which the next switch invalidated. The address
+  is reported, not stored.
+
+- **`wifi set` measures the switch instead of inferring it.** The old timing
+  came from reading the SSID back after reconnecting, but the v20 config command
+  returns stored configuration, not association state — there is no
+  "currently associated SSID" in the protocol, so that number was a round trip,
+  not a transition. The CLI now samples reachability from the client side and
+  reports when the camera left, when it answered again, and at which address.
+
+- **`wifi set` no longer refuses on a wired camera.** The check for "is this
+  camera on Wi-Fi right now" asked `GetLinkType`, whose values are `LAN`,
+  `PPPOE` and `CDMA` — how the device obtains an IP, with no wireless value at
+  all. The branch could only be reached when the read *failed*, so wired
+  cameras were told to pass `--no-test`. It now uses the measured signal
+  strength, the one live value in that structure.
+
+### Added
+
+- **`wifi get` reports `signal`** — the associated link's signal strength as the
+  device measures it.
+
 ## [0.11.0] — 2026-08-06
 
 Six reported issues, two new platforms, and one command that could delete your
