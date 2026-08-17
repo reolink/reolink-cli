@@ -324,14 +324,32 @@ you own or are authorised to administer.
   `device add` and refer to it by name.
 - **Stored passwords are encrypted at rest.** Camera passwords in
   `aliases.toml` are AES-256-GCM ciphertext (`RLENC1:…`), decrypted with a key
-  in `credentials.key` beside it. An existing plaintext config is converted
-  automatically the first time you run any command — you do not have to do
-  anything. Both files are owner-only (`0600`), and the CLI refuses to read them
-  if they are group- or world-readable. Do not relax that, and do not commit
-  them anywhere.
-- **Back up `credentials.key` together with `aliases.toml`.** Neither is usable
-  without the other. If the key is lost the passwords cannot be recovered and
-  must be re-entered with `device update <camera> --password-stdin`.
+  in `credentials.key` beside it — beside whichever file holds the password, so
+  a registry redirected with `--cameras-file` / `REOLINK_CAMERAS_FILE` carries
+  its key in its own directory, and so does a redirected `config.toml` (it can
+  hold a password too). An existing plaintext config is converted automatically
+  the first time you run any command — you do not have to do anything. Both
+  files are owner-only (`0600`), and the CLI refuses to read them if they are
+  group- or world-readable. Do not relax that, and do not commit them anywhere.
+- **Back up the file and the `credentials.key` next to it, as a pair.** Neither
+  is usable without the other. If the key is lost the passwords cannot be
+  recovered and must be re-entered with `device update <camera>
+  --password-stdin`. The pair rule holds in every layout — a redirected profile
+  is self-contained:
+
+  ```bash
+  # everything this profile needs, from ITS directory (not the default one)
+  cp /srv/cams/site-a/aliases.toml /srv/cams/site-a/credentials.key /backup/site-a/
+  ```
+
+  Restoring a registry without its neighbouring key fails loudly — every stored
+  password reports "cannot be decrypted — the key file is missing" — never
+  silently.
+- **Separate registries are separate secrets.** Each `--cameras-file` profile
+  keeps its own key, so sharing one profile's pair does not let anyone decrypt
+  another profile's registry. Before 0.12.4 every profile shared a single key
+  in the default config directory; a key still living there is read as a
+  fallback until the next write places it beside its file.
 - **This protects the file, not the account.** The key sits next to the data, so
   anything that can read both can decrypt. What it removes is the casual
   exposure: a copied config, a backup, or an AI agent reading the file no longer
