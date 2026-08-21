@@ -32,6 +32,8 @@ $ reolink-cli --camera front-door info | jq '{model, firmware, name}'
 - 🎥 **Live media** — `preview play`, file/stdout capture, batch capture, JPEG snapshot
 - 🕹️ **PTZ** — pan/tilt/zoom, presets, patrol, guard, autotrack, real timed jog
 - 💡 **Lights** — IR, spotlight (with native **blink**), white-LED, status LED
+- 🎚️ **Video encoder** — read/change resolution, frame rate, bit rate, H.264/H.265, GOP per stream
+- 📢 **Siren** — sound / silence the built-in siren on demand
 - 🧠 **Detection** — motion + AI (person / vehicle / dog_cat / package)
 - 📼 **Recording & storage** — schedule, SD/HDD status, VOD search & download
 - 🔔 **Events** — query/stream + a declarative rule engine (`events monitor`)
@@ -39,6 +41,41 @@ $ reolink-cli --camera front-door info | jq '{model, firmware, name}'
 - 🌐 **Stream URLs** — RTSP / RTMP / FLV for Frigate, Home Assistant, go2rtc, VLC
 - 🤖 **AI-native** — built-in MCP stdio server + cross-agent operator skill
 - 🧩 **Fleet-aware** — camera & tag selectors, local session daemon for a fast control plane
+
+## Commands
+
+The full, always-current list comes from the binary itself — run `reolink-cli
+--help` for every command, `reolink-cli <command> --help` for its options, or
+`reolink-cli features` for a machine-readable manifest (what agents read). The
+table below is a snapshot for browsing.
+
+Almost every control command needs the local gateway running
+(`reolink-cli gateway start &`); read-only lookups like `discover` / `ping` do
+not. All operations are LAN-only in these public builds.
+
+| Area | Commands | What you can do |
+|---|---|---|
+| **Setup & registry** | `init`, `device`, `config`, `doctor`, `setup` | Scaffold config, register/import cameras, tag them, health-check the install |
+| **Connect & inspect** | `ping`, `login`, `info`, `capabilities`, `status`, `benchmark` | Reach a camera, read model/firmware/serial, list what the model supports, measure round-trip latency |
+| **Discovery** | `discover` | Find cameras on the LAN (broadcast) |
+| **Live media** | `preview`, `snapshot`, `stream` | Play or capture live video, grab a JPEG, print RTSP/RTMP/FLV URLs for Frigate / Home Assistant / go2rtc / VLC |
+| **Image & encoder** | `image`, `encode`, `osd` | Flip/mirror, read/change resolution · frame rate · bit rate · H.264/H.265 · GOP per stream, on-screen name/time overlay |
+| **Lights** | `light` | IR / night vision, spotlight (with **blink**), white-LED, status LED |
+| **Audio** | `audio` | Volume, alarm mute, **siren** (sound/stop), quick replies, two-way talkback / TTS |
+| **PTZ** | `ptz` | Pan / tilt / zoom, focus, presets, patrol, guard, autotrack, timed jog |
+| **Detection & events** | `detect`, `notify`, `events` | Motion + AI (person / vehicle / dog_cat / package), push settings, query/stream events + a declarative rule engine (`events monitor`) |
+| **Recording & storage** | `record`, `vod`, `storage`, `log` | Recording schedule, VOD search & download, SD/HDD status, device logs |
+| **Privacy & users** | `privacy`, `users` | Privacy-mask regions, manage device accounts |
+| **Network** | `wifi` | Push a new SSID + PSK (pre-validated), auto-rediscover, update the registry |
+| **System** | `system` | Reboot |
+| **Gateway & tooling** | `gateway`, `mcp-server`, `plugin`, `cache`, `self-update`, `raw` | Run the control-plane gateway, expose MCP tools to AI agents, maintain the skill cache, send a raw Baichuan request |
+
+> **Support varies by model.** A command existing here does not guarantee your
+> camera implements it — an unsupported operation returns a clear "device does
+> not support" error rather than failing silently. Check a specific model with
+> `reolink-cli --camera <name> capabilities` or
+> `reolink-cli --camera <name> device inventory --capabilities`. `v30`-protocol
+> cameras are still provisional; `v20` is the stable surface.
 
 ## Install
 
