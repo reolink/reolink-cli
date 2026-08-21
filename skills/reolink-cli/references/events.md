@@ -49,10 +49,11 @@ Each item:
 }
 ```
 
-- `eventType`: normalized label — `motion | people | vehicle | face | dog_cat | visitor | package | cry | none | raw.cmd<N>`
+- `eventType`: normalized label — `motion | people | vehicle | face | dog_cat | visitor | package | cry | none | siren.on | siren.off | raw.cmd<N>`
 - `status`: raw `<status>` from device (`MD` = motion detected; `none` = ended).
 - `aiType` / `aiTypes`: AI classification (e.g. `people`).
-- `raw.cmd<N>` items are ambient state reports (PTZ param change, floodlight, siren, sleep) — safe to filter out.
+- `siren.on` / `siren.off` come from the device's cmd 547 push — the only way to observe siren state (there is no siren GET).
+- `raw.cmd<N>` items are other ambient state reports (PTZ param change, floodlight, sleep) — safe to filter out.
 
 ## Related
 

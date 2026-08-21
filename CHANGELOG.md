@@ -4,6 +4,56 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.13.0] — 2026-08-21
+
+Two new command groups — video encoder settings and the manual siren — plus a
+recording fix for Home Hubs and NVRs. Both new groups were verified against real
+cameras (E1 Outdoor, RLC-823S1).
+
+### Added
+
+- **`encode` — read and change the video encoder.** `encode get` shows every
+  stream (main / sub / third): resolution, frame rate, bit rate, codec
+  (H.264 / H.265), profile, GOP, and H.265+. `encode set --stream <s>` changes
+  one stream — for example
+  `encode set --stream main --fps 15 --bitrate 4096 --codec h265`. `encode
+  capability` lists the exact resolution / frame-rate / bit-rate combinations
+  the camera will accept.
+
+  Run `encode capability` before `encode set`: a value the camera does not list
+  is rejected, and nothing changes. The write replaces all three streams at
+  once on the wire, so the CLI always re-reads the current settings and patches
+  only the flags you pass — the streams you do not name are preserved. Changing
+  a resolution restarts the encoder, so any live preview / RTSP / NVR consumer
+  reconnects.
+
+- **`audio siren` — sound the built-in siren.** `audio siren play --duration N`
+  sounds it for N seconds (it stops itself); `audio siren stop` silences it now.
+  This is the app's manual-siren button. `audio siren task` / `audio siren
+  enable` expose the alarm-linkage schedule and master switch where the model
+  implements them (many current models return "unsupported" for those two while
+  manual play/stop works everywhere). A sounding camera also surfaces as a
+  `siren.on` / `siren.off` event on the event stream.
+
+- **MCP tools** for both: `camera_encode_get` / `camera_encode_set` /
+  `camera_encode_capability` and `camera_siren_play` / `camera_siren_stop`.
+
+- **Gateway observability.** The gateway now writes a log file and records
+  timing on the paths that matter for diagnosing a slow or failing connection,
+  and `benchmark` reports success rate and measured bit rate.
+
+### Fixed
+
+- **Recording search and download on Home Hubs and NVRs now target the right
+  camera.** On a multi-camera hub, `vod search` / `vod download` resolve each
+  channel to its paired sub-device before querying, instead of addressing the
+  wrong channel.
+
+- **`encode` never invents a setting the camera did not report.** A camera that
+  omits a field (some send no rate-control mode or audio flag at all) no longer
+  gets a default written back on the next unrelated edit — which, for the audio
+  flag, would have silently muted the stream.
+
 ## [0.12.4] — 2026-08-14
 
 Wi-Fi work, a protocol default that stops guessing, and a data-loss defect in
