@@ -4,6 +4,68 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.13.1] — 2026-08-24
+
+Three bugs reported against 0.13.0, plus two more `vod download` defects found
+while verifying the fixes against a real Home Hub 2, and a large speed-up for
+batch downloads.
+
+### Fixed
+
+- **`vod download` silently dropped everything past about the 210th recording**
+  (#87, reported by **@djancak**). The recording names travel in the request
+  URL, and the gateway cut that URL off at 4096 bytes without saying so — then
+  served the shortened request as if nothing had happened, reporting `ok: true`
+  for a download that fetched 210 of 394 files.
+
+  The gateway now answers `414 URI Too Long` instead of truncating, and the CLI
+  splits a long list into as many requests as it takes, each sized against the
+  real encoded length. Recordings in one batch still share a single device
+  connection, so the speed-up from 0.12.4 (#72) is intact. Verified on a Home
+  Hub 2: 220 recordings requested, 220 written.
+
+- **A camera registered with a `uid` could not be reached at all** (#85,
+  reported by **@djancak**). Since these builds carry no P2P, a `uid` target
+  went straight to a wake broadcast — ignoring the LAN address the same entry
+  already gave — and a mains-powered camera that never answers a wake failed
+  after about nine seconds with `wake timed out after 3 attempts`. A camera
+  that did answer would then have been logged in with the wrong protocol.
+
+  A `uid` target now tries the LAN first: an entry that also carries a `host`
+  connects straight to it, and the wake path is left to the battery devices it
+  was meant for. Verified against a real camera: 9.0s failure → 2.1s success.
+
+- **`vod download` could not fetch any recording past the 500th of its day.**
+  Locating a recording by name re-searched its day with a hard cap of 500, so
+  on a busy day `vod search` would list a recording that `vod download` then
+  reported as `not found`. Measured on a Home Hub 2 with 604 recordings in one
+  day. The cap is gone — that search looks for one known name, so capping it
+  protected nothing.
+
+- **Long multi-recording downloads failed near the end with `invalid or expired
+  token`.** A media token expires 300 seconds after its last use, and a batch of
+  a few hundred recordings streams for far longer than that. Each batch now gets
+  a fresh token.
+
+### Changed
+
+- **`vod search --limit` accepts up to 100000, and `--limit 0` means no limit**
+  (#86, reported by **@djancak**). The old ceiling of 500 was never a camera
+  limit — the request carries no count at all and the camera pages until it runs
+  out — and a single busy day can exceed it, leaving no way to tell "this camera
+  has 500 recordings" from "we stopped counting at 500". A day with 604 and a
+  month with 965 both come back whole now.
+
+### Performance
+
+- **Batch `vod download` is several times faster.** Locating each recording
+  searched its entire day and then filtered by name; a recording's name already
+  ends in its own start time, so the search now asks for that one second and
+  falls back to the day only if that finds nothing. On a Home Hub 2 a day
+  holding 604 recordings took 4.97s to search and one second of it 0.31s, and
+  this runs once per file. Same 220 recordings, same camera: 360s → 204s, and
+  roughly six times faster on days with more recordings in them.
+
 ## [0.13.0] — 2026-08-21
 
 Two new command groups — video encoder settings and the manual siren — plus a
