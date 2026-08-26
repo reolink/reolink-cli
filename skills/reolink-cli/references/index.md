@@ -9,6 +9,7 @@ Load the file matching your task — don't read all of them.
 | [`controls.md`](controls.md) | Light (IR / status-LED / spotlight / whiteled), image (flip / tune), OSD, audio, privacy mask |
 | [`ptz.md`](ptz.md) | Any `ptz …` — movement, presets, zoom/focus, patrol, guard, autotrack |
 | [`detection.md`](detection.md) | Motion detection, per-type AI detection (`detect motion` / `detect ai`) |
+| [`scene-mode.md`](scene-mode.md) | Hub arming profiles — home / away / disarm, per-channel task bits, weekly timetable (`scene *`). Hubs and NVRs only |
 | [`recording.md`](recording.md) | Record schedule + core config (`record schedule get/set`, `record config get`, week bitmap, daily/weekly windows) |
 | [`storage.md`](storage.md) | SD card / HDD read-only status (`storage status`) |
 | [`notifications.md`](notifications.md) | Mobile push (`notify push get/set`) — device's own cloud push, not gateway events |
