@@ -4,6 +4,61 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.14.0] — 2026-08-26
+
+Scene mode: the Home / Away / Disarm control your hub shows in the app, now on
+the command line.
+
+### Added
+
+- **`scene` — arming profiles on a hub or NVR.** A scene is a named set of
+  per-channel tasks (`record`, `ftp`, `email`, `push`, `audio` — the siren —,
+  `linkage`, `speaker`, `track`), so switching scenes re-arms every paired
+  camera at once. It does not change what each camera *detects*; it changes what
+  the hub *does* about it.
+
+  ```
+  reolink-cli --camera hub scene show          # which scene is active
+  reolink-cli --camera hub scene list          # every scene and its tasks
+  reolink-cli --camera hub scene set 3         # arm for leaving
+  reolink-cli --camera hub scene set --schedule # hand back to the timetable
+  ```
+
+  `scene edit` changes a scene's tasks, name, icon and activation delay —
+  `--channel N` confines the change to one camera, and without it every channel
+  in the scene is rewritten. `scene schedule get/set` reads and writes the
+  weekly timetable (7 days × 2 half-hour slots × 24 hours) that drives scene
+  switching whenever no scene is pinned. `scene alarm get/set` maps alarm types
+  (person, vehicle, pet, other) onto individual tasks. `scene options` covers
+  the master switch, the hub's Home button, and privacy mode while disarmed.
+
+  Scene id `0` is not a scene — it hands control to the timetable, and
+  `scene show` reports that plainly as `followSchedule: true`.
+
+  Commands refuse rather than guess: a scene id the hub does not have is
+  rejected with the ids it does have, a mistyped task name is rejected with the
+  names this device honours, and an option the device reports as unsupported is
+  refused instead of written and ignored.
+
+- **MCP tools** `camera_scene_show`, `camera_scene_list`,
+  `camera_scene_schedule_get` and `camera_scene_set`, so an agent can read and
+  switch arming state in plain language.
+
+### Notes
+
+- Scene mode exists on hubs and NVRs. A standalone camera answers `405` to
+  every `scene` command.
+- `scene edit --tasks` **replaces** a scene's task set rather than adding to it.
+  A scene edited down to no tasks records nothing and notifies nobody, and the
+  device gives no warning — `references/scene-mode.md` in the bundled skill
+  spells this out.
+- Every write is read-modify-write, because the device replaces the whole object
+  on each of these commands. Fields you do not name keep the value the device
+  reported.
+
+Verified against a real Reolink Home Hub 2 (v3.3.0.579): every command and flag
+was exercised on the device and the original configuration restored afterwards.
+
 ## [0.13.1] — 2026-08-24
 
 Three bugs reported against 0.13.0, plus two more `vod download` defects found
