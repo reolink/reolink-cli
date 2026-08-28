@@ -112,6 +112,15 @@ reolink-cli --tag outdoor device resolve
 
 # Add (prompts for password interactively — do NOT pass --password on argv)
 reolink-cli device add front-door --host 192.168.1.43 --user admin --tags outdoor,entrance
+reolink-cli device add "front door" --host 192.168.1.41 --user admin --password-stdin
+```
+
+A name with a space needs quotes, like any shell argument — without them the
+shell splits it and the second word arrives as an unexpected argument. Names
+match exactly, so `Front Door` and `front door` are two different cameras. The
+hyphen in `front-door` is only there to save the quotes later.
+
+```bash
 
 # Update / remove
 reolink-cli device update front-door --description "Front door camera"
