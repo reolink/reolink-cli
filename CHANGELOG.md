@@ -4,6 +4,66 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.14.1] — 2026-08-28
+
+Three defects reported by users of 0.14.0, plus a documentation gap that took
+someone hitting an error to find.
+
+### Fixed
+
+- **Downloaded recordings were always named `.h264`, whatever the codec**
+  (#94, reported by **@djancak**). The extension was wrong twice over: those
+  files are not an elementary stream at all, they are an **MP4 container**.
+  Every one begins `…ftyp iso4`, which is why `ffprobe` reads them happily and
+  reports `hevc`.
+
+  The old code assumed the bytes after the header frame were raw H.264/H.265
+  and sniffed for Annex-B start codes. An MP4 header happens to contain a
+  `00 00 00 01`, so the sniffer read a meaningless NAL type and fell back to
+  its `h264` default — which is why *every* download got that name regardless
+  of what was inside. It now identifies the container first and names the file
+  `<recording>.mp4`; the Annex-B sniffing stays as a fallback for firmware that
+  really does send an elementary stream.
+
+- **`--password-stdin` hung on a terminal, and did not exist where it was
+  advised** (#92, reported by **@djancak**). It went straight to a blocking
+  read with nothing on screen, which is indistinguishable from a hang. It now
+  says what it is waiting for first:
+
+  ```
+  reading the password from stdin — type it, press Enter, then Ctrl-D
+  ```
+
+  That wording is measured, not assumed: on a line-buffered terminal a single
+  Ctrl-D after the password does **not** end the read, because Ctrl-D only
+  signals EOF when the line buffer is already empty.
+
+  The flag is also global now, like `--password` has always been. Previously it
+  existed only on `device add` / `device update`, while every other command's
+  error message advised "use `--password-stdin`" — advice that could not be
+  followed.
+
+### Added
+
+- **`vod download --directory <DIR>`** (#93, requested by **@djancak**).
+  Chooses where recordings land, creating the directory if it does not exist,
+  for a single recording or a list. Previously the only way was to `cd` first,
+  which a caller that does not control its working directory — an MCP client,
+  an agent — cannot do. `--file` remains single-recording-only and the two are
+  mutually exclusive.
+
+### Documentation
+
+- **Camera names with spaces** (#91, reported by **@ian1182**). There are no
+  name rules — spaces, mixed case and non-ASCII all work — but a name with a
+  space needs shell quotes like any other argument, and every example showed
+  the hyphenated form. `device add --help`, the command reference and the
+  bundled skill now show a quoted example and note that names match exactly, so
+  `Front Door` and `front door` are different cameras.
+
+Verified against a real Reolink Home Hub 2 (v3.3.0.579), including the terminal
+behaviour of `--password-stdin` under a pty.
+
 ## [0.14.0] — 2026-08-26
 
 Scene mode: the Home / Away / Disarm control your hub shows in the app, now on
