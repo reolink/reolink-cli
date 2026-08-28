@@ -4,6 +4,54 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.14.2] — 2026-08-28
+
+Three Home Hub defects, all verified on a Home Hub 2 with three child cameras.
+
+### Fixed
+
+- **A hub channel reported the hub's own model, not the child camera's**
+  (#99, reported by **@ridome**). `info` sends a device-level command, so every
+  channel of a hub answered `Reolink Home Hub 2` and the child cameras were
+  invisible — leaving an agent unable to tell what any given channel could
+  actually do. There is a per-channel equivalent in the protocol that was
+  simply not implemented. `info` now reports the child under its own `channel`
+  object:
+
+  ```
+  hub-ch0  hub=Reolink Home Hub 2 | child: Argus PT Ultra   / v3.0.0.4739 / Front Door
+  hub-ch1  hub=Reolink Home Hub 2 | child: Reolink Argus PT / v3.0.0.5585 / Back Door
+  hub-ch2  hub=Reolink Home Hub 2 | child: OMVI 2i Ultra    / v3.0.0.6976 / Back Yard
+  ```
+
+  Deliberately a separate object rather than merged into the top level: a
+  caller deciding what a camera supports must not mistake hub metadata for the
+  child's. Serial number, hardware version and build day come through too.
+
+- **`audio siren play` reported the siren was sounding when the device had only
+  acknowledged the command** (#95, reported by **@ridome**). `state: "on"` was
+  a hard-coded string — it was never evidence. Measured on a Home Hub 2: the
+  command returned 200 on two channels while no `siren.on` report arrived on
+  any of them, so an agent faithfully relayed a success the CLI had invented.
+
+  There is no way to ask a v2.0 device whether its siren is sounding, so rather
+  than fake verification the response now states only what is known:
+  `accepted`, the requested duration, send and expected-stop timestamps, and
+  `verified: false`, with a pointer to `events stream` where a device that does
+  sound emits `siren.on` / `siren.off`.
+
+- **The first spotlight command to a hub child camera could fail with `400`**
+  (#97, reported by **@ridome**). The pattern was `400, ok, ok` — try it once
+  and you conclude the feature is unsupported, though all three child cameras
+  turn their light on and off normally.
+
+  The trigger could not be pinned: it did not correlate with how long the
+  camera had been idle (after 120s the first call succeeded), nor with a
+  freshly started gateway. So this does not pretend to know why — it retries on
+  a device-side `400` with a bounded backoff and reports `retried` so the
+  caller can see it happened. A `405`, meaning the model has no spotlight, is
+  not retried.
+
 ## [0.14.1] — 2026-08-28
 
 Three defects reported by users of 0.14.0, plus a documentation gap that took
