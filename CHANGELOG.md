@@ -4,6 +4,136 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.15.0] — 2026-09-01
+
+Four community issues, and along the way the answer to a question 0.14.2 left
+open: the siren was never actually making a sound.
+
+### Fixed
+
+- **The siren was accepted and silent — on every camera, in every release
+  before this one** (#95, reported by **@ridome**). 0.14.2 stopped the CLI
+  claiming the siren had sounded, which was right but incomplete: it had not
+  established whether it sounded at all. It did not.
+
+  Cmd 263 carries a `playMode`, and the CLI sent mode 1 ("sound for
+  `playDuration` seconds"). This firmware accepts that with a `200` and ignores
+  it. Mode 0 ("sound `playTimes` times") is the one that works. Measured by
+  capturing the camera's own microphone through the preview stream and firing
+  both modes into a single recording — the audio is flat at ambient through
+  mode 1 and peaks roughly forty times higher on mode 0:
+
+  ```
+  [167,186,171,173,178,201,157,167,203,186,197,210,213,190,182,176,811,7295,7434,7508]
+               ^ mode 1 fired here                       ^ mode 0 fired here
+  ```
+
+  One repetition runs about 3.2 s, so `--duration` now rounds up to whole
+  repetitions and the answer reports `playTimes` and `approxDurationSeconds` —
+  the conversion is visible rather than hidden. `--times N` is there when you
+  want exact control. `verified: false` still stands, because v2.0 has no way
+  to *ask* a device whether its siren is sounding; what changed is that it now
+  does.
+
+- **A `400` from a sleeping camera read as "your model does not support this"**
+  (#95 and #97, reported by **@ridome**). A battery camera behind a hub falls
+  asleep after roughly two minutes of quiet, and a sleeping child rejects
+  commands with a bare `400` — the same code the device uses for a command it
+  does not implement. That is how an agent came to tell a user their Argus PT
+  Ultra had no built-in siren. It has one.
+
+  Varying only the gap since the previous command, on one hub:
+
+  ```
+  gap                                     attempts to succeed
+  back-to-back (seconds)                  1
+  none, but a brand-new gateway session   1
+  ~2 min / 120 s / 300 s / overnight      3
+  ```
+
+  A flat three attempts, about 1.6 s, and the refused request is itself what
+  wakes the camera — so retrying is the mechanism, not a workaround. `audio
+  siren play` and `light spotlight set` now retry on a bounded backoff and
+  report `attempts`; when the backoff is exhausted the error explains standby
+  instead of passing the device's "unsupported" wording through. The hub
+  publishes the state as `loginState: standby`, which `info` now surfaces
+  alongside the child's identity (it lags, so it explains a failure rather than
+  predicting one).
+
+- **A siren that sounds but cannot be heard** (#95). One child on a test hub sat
+  at speaker volume 7 of 100 and was inaudible on its own microphone; the same
+  command at 100 peaked twenty-one times above ambient. The command succeeds
+  either way, so the answer now carries `speakerVolume` — if nobody heard it,
+  that is the first thing to read.
+
+- **`vod search` failed for a day at the start of every month.** A window
+  crossing a month end produced no query windows at all internally, so the
+  search came back as "no recordings"; a guard upstream turned that into an
+  outright rejection, which is why `--since 24h` did not work on the first of
+  any month and `--since 7d` did not work for its first week. The window is now
+  walked by calendar date — month ends, year ends and leap-year February
+  included.
+
+- **One unreadable recording no longer costs you the whole batch.** A
+  multi-file `vod download` used to abort at the first file the device would
+  not serve, discarding everything after it. Failures are now reported per file
+  (`requested` / `downloaded` / `skipped`) and the rest of the batch continues;
+  a batch where nothing arrived is still a hard error, and no zero-byte file is
+  left behind for a skipped recording.
+
+- **Recording timestamps parsed from decorated file names.** Every digit in the
+  string counted, so `Mp4Record_0120260820100150.mp4` came out as the year 260.
+  Parsing now anchors on one unbroken run of digits.
+
+- **Two Wi-Fi and gateway timeouts that cost more than they saved.** Built
+  internally as 0.14.3 and never released on its own, so it ships here.
+  `wifi set`'s pre-switch address probe went from 900 ms to 5 s: in a 925-case
+  compatibility run the one "switch: not measured" was a camera probed one
+  second after re-associating, where the same broadcast found it 4.45 s later
+  in the same command — the switch had worked, only the measurement was lost.
+  And the gateway's LAN leg now gives a cached or hinted address 3 s instead of
+  10 s to answer: a live address replies in milliseconds, while a stale one
+  written back into the cache after a network switch made every following
+  connection wait the full ten before a fallback probe found the new address in
+  0.4 s.
+
+### Added
+
+- **`--view N` addresses the second lens of a dual-lens camera** (#100,
+  reported by **@ridome**). It is a third axis, orthogonal to `--channel`
+  (which camera) and `--stream` (which encoding profile of that view), and
+  defaults to the only view an ordinary camera has, so nothing existing
+  changes. `info` lists what a channel has:
+
+  ```
+  hub-ch2  OMVI 2i Ultra  dualLens=true  views=[(0, "wide"), (1, "telephoto")]
+  ```
+
+  Measured per view on real hardware: `encode` (3840x2160 vs 2880x1616),
+  privacy mask, motion detection and PTZ all differ. Media does not —
+  `snapshot` is answered `400` for any view above 0, and preview and
+  `stream url` have no selector in the protocol at all. Those two now **refuse**
+  a non-zero `--view` rather than quietly handing back the first view, and the
+  snapshot error says which half of the axis works.
+
+- **Bounded monitoring tasks** (#96, reported by **@ridome**). An
+  `events monitor` rule takes `expires_at` — an RFC 3339 timestamp or a Unix
+  second — after which it stops firing. Absolute rather than relative on
+  purpose: a `"30m"` would restart its countdown on every reload, so a bounded
+  task would quietly become an unbounded one. Expiry deactivates the rule
+  without rewriting your rules file, `status` reports `expired` and
+  `secondsRemaining` per rule, and `history` takes `--rule` and `--since` with
+  the filters applied *before* `--last`, so a busy neighbour can no longer
+  crowd a bounded task's captures out of the tail.
+
+- **`audio siren enable set --channel-on` / `--channel-off`.** The buzzer
+  linkage has two switches — a device-wide master and a per-channel bitmap —
+  and the CLI could only write the master. One hub reported the master on with
+  every channel bit clear, a state the command line had no way to correct.
+
+- **`audio siren play --times N`** for an exact number of repetitions, with
+  `--duration` kept as the convenience that rounds up to it.
+
 ## [0.14.2] — 2026-08-28
 
 Three Home Hub defects, all verified on a Home Hub 2 with three child cameras.

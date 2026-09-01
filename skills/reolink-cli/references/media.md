@@ -81,7 +81,7 @@ reolink-cli --tag outdoor stream url --kind rtsp --stream main
 
 ## VOD (Recorded Video)
 
-Time is **naive local ISO** (`YYYY-MM-DDTHH:MM:SS`, no timezone, no ms). Cross-month queries are rejected — split per month. Filenames are case-sensitive.
+Time is **naive local ISO** (`YYYY-MM-DDTHH:MM:SS`, no timezone, no ms). Cross-month windows are split at month boundaries and merged by the gateway, so `--since 24h` works on the first of a month too. Filenames are case-sensitive.
 
 ```bash
 # Absolute range
