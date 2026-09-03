@@ -4,6 +4,89 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.16.0] — 2026-09-02
+
+Snapshots got faster, and one class of snapshot stopped failing outright. Both
+turned out to be our bugs, not the camera's — found by timing each phase of a
+capture instead of assuming the wait was physics.
+
+### Fixed
+
+- **`--stream sub` was silently returning a full-resolution frame on some
+  cameras.** `<fullFrame>` is a model-specific snapshot mode (the reference SDK
+  documents it as "snap full frame pic, *for sd7*", to be used *together with*
+  the sub stream). The CLI sent `fullFrame=1` unconditionally, to every device.
+  On a camera that implements the flag, that overrides `<streamType>` — you ask
+  for the small preview-sized JPEG and the device dutifully encodes and sends
+  the full-resolution one.
+
+  Measured on a dual-lens child behind a Home Hub 2, same camera and otherwise
+  identical request:
+
+  ```
+                    resolution     size     awake     asleep (first capture)
+  --stream sub
+    fullFrame=1     3840x2160     875 KB     9.34 s     23 s
+    fullFrame=0      896x512       58 KB     1.92 s     6.46 s
+
+  --stream main
+    fullFrame=1     3840x2160     861 KB     17.1 s
+    fullFrame=0     3840x2160     860 KB      5.2 s
+  ```
+
+  So the default stream is **~5x faster and ~15x smaller**, and its cold-start
+  case drops from 23 s to 6.5 s.
+
+  `--stream main` is worth reading twice: it returns the same resolution and
+  very nearly the same bytes either way, so nothing about the image changed —
+  but the flag was routing the capture down a much slower and far less stable
+  path. Three runs took 11.8 / 17.1 / 28.8 s with it, against 4.7 / 5.2 / 7.4 s
+  without. Full-resolution captures on these cameras are roughly **3x faster**
+  as a result.
+
+  Cameras that never implemented the flag measured the same either way, which is
+  exactly why this hid for so long: only the models that *support* the mode
+  looked broken, and they looked like they were ignoring `--stream` rather than
+  following an instruction we should not have been sending.
+
+- **Snapshots from a sleeping or high-resolution camera could fail instead of
+  just being slow.** The transport's read budget was a flat 10 s, and it bounds
+  a *single* read — while a snapshot's `cmd 109` is one long silence: a battery
+  camera behind a hub has to bring its whole video pipeline (sensor, ISP,
+  encoder) up before it sends the first byte.
+
+  Measured on a Home Hub 2: a sub-stream capture from a sleeping child spent
+  **5.1 s** in that silence, and the 4K dual-lens child needed **23 s** when
+  three channels were woken concurrently. Anything past 10 s came back as
+  `tcp read timeout after 10s` — a failed capture, not a slow one.
+
+  The budget is now 30 s, which covers the wake. It stays a single global value
+  rather than a per-command one: VOD download and preview first-frame have the
+  same "one long wait" shape, and a per-call timeout is something every future
+  media path would have to remember to pass. The trade is that a device which
+  accepts the connection and then goes mute takes 30 s to report — rare, and
+  well inside the CLI's own 60 s response budget. Timeout messages now quote the
+  real value instead of a hard-coded "10s".
+
+### Added
+
+- **`events history` — search the event log the device itself recorded**
+  (hub / NVR; v2.0 cmds 516/517/518). This is a different store from
+  `events query`: `query` and `stream` read the gateway's in-memory ring of live
+  pushes (the most recent few hundred, lost when the gateway restarts), while
+  `history` asks the device for the events it wrote down, so it reaches back as
+  far as the device keeps them.
+
+  ```
+  reolink-cli --channel 1 events history --since 7d --types people,motion
+  ```
+
+  Takes `--from`/`--to` or a relative `--since`, an optional `--types` filter,
+  and `--limit`. A hub files events per paired camera, and the CLI resolves that
+  sub-device automatically from `--channel`. Standalone cameras have no event
+  log and answer `400`; an empty list from a hub means the window genuinely held
+  no matching events.
+
 ## [0.15.0] — 2026-09-01
 
 Four community issues, and along the way the answer to a question 0.14.2 left
