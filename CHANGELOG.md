@@ -4,6 +4,29 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.17.1] — 2026-09-04
+
+### Fixed
+
+- **A device refusing a download no longer reads as the stream simply ending.**
+  The receive loop treated an empty frame as end-of-stream, and a refusal *is*
+  an empty frame carrying a non-200 code — so the refusal was swallowed and the
+  time-range download reported "no recording in that window" instead. On a model
+  that does not implement the cut command at all, that diagnosis is wrong and
+  sends you looking in the wrong place ("but I can see the recordings").
+
+  Response codes are now read the way the reference implementation reads them:
+  200 carries data, 300 ends a download by name, 331 ends a cut, and anything
+  else is the device saying no — reported as the device error it is.
+
+  This came out of a control experiment worth recording: an NVR answered 400 to
+  the cut command, but so did a camera that demonstrably **does** support it,
+  when asked for a window holding no recording. A 400 therefore cannot tell
+  "unsupported" from "nothing there" — v0.17.0's release note implied it could.
+  Since the CLI searches before it cuts, a 400 arriving *after* recordings were
+  found is now reported for what it most likely is: this model has no cut
+  download, and `vod download <name>` still works.
+
 ## [0.17.0] — 2026-09-04
 
 `vod download` can now ask the camera for a time range and let it do the
