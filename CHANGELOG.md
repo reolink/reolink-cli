@@ -4,6 +4,42 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.18.0] — 2026-09-04
+
+### Added
+
+- **A time-range download can now bring the audio with it: `--audio clip.aac`.**
+  v0.17.0 dropped it, and dropped it silently. The camera had been sending it
+  all along — measured on a 49-second window, **749 video packets and 779 AAC
+  ones** — and the parser counted the audio packets' length and threw the bytes
+  away.
+
+  That was not a design choice, it was an incomplete feature: downloading a
+  recording by name hands back an MP4 with its AAC track, and somebody asking
+  for a *clip* usually wants what was said in it.
+
+  ```sh
+  reolink-cli vod download --from 2026-09-02T09:45:00 --to 2026-09-02T09:55:00 \
+    --channel 5 --file clip.hevc --audio clip.aac
+  ffmpeg -i clip.hevc -i clip.aac -c copy clip.mp4     # no re-encode
+  ```
+
+  The audio is **ADTS AAC** — each packet is exactly one whole ADTS frame — so
+  the `.aac` is readable on its own and remuxes losslessly. Measured: the
+  remuxed file is hevc + aac, 49.856 s, against 49.828 s for the same recording
+  downloaded by name. A 28 ms difference, below one frame.
+
+  **The default is deliberately unchanged.** Video-only stays byte-for-byte
+  what it was, and `--audio` is a second request. Carrying both tracks in one
+  response would have meant reworking the record framing that multi-file
+  downloads use — a shipped mechanism serving a different feature. The price is
+  that the camera cuts the window twice.
+
+### Fixed
+
+- The parser's AAC and ADPCM packets always carried an empty buffer: the type
+  promised data it never delivered.
+
 ## [0.17.1] — 2026-09-04
 
 ### Fixed
