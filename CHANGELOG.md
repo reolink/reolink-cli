@@ -4,6 +4,57 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.16.1] — 2026-09-04
+
+Three fixes, all of them cases where the CLI knew what had gone wrong and told
+you something else — or nothing at all.
+
+### Fixed
+
+- **A failed single-file `vod download` now reports the device's actual error
+  ([#105]).** Internally a download emits `file started` → `file skipped:
+  <reason>` → `error: <reason>`, and the reader stopped at the skip marker. So
+  *every* single-file failure was replaced by the hint reserved for a download
+  that streams nothing and gives no reason — advice about waking battery
+  cameras behind a hub, which reached someone whose recordings were on an NVR.
+  Reproduced here on a Home Hub with a recording name that does not exist: one
+  name produced the battery text, the same request with two names (the batch
+  path, which was always correct) produced `device rejected command 14 (400)`.
+  The hint stays, for the case it was written for.
+
+- **"Recording not found" now says which channel it searched.** A download
+  re-searches the recording to get its exact window, and a hub or NVR files
+  recordings per channel — so a name copied out of `vod search --channel 7` and
+  downloaded without `--channel` is genuinely absent, and the old message read
+  like the recording was gone. It now names the channel, and reads the likely
+  one back out of the recording name (the leading two digits are the 1-based
+  channel):
+
+  ```
+  recording '0820260831070001' not found on channel 0 in the search of 2026-08-31 —
+  the name starts with '08', which usually means channel 7. Pass the same `--channel`
+  you searched with.
+  ```
+
+  It only says so; it will not silently download from a different channel.
+
+- **Aliases carrying both a `host` and a `uid` can use the media endpoints
+  again.** Login routed such a target by uid (it runs a connect race, with the
+  IP as a LAN hint) while the media URL named the IP, so the gateway's binding
+  check rejected the token it had just issued — `token does not match host`,
+  which disabled `snapshot`, `preview` and `vod download` for those aliases
+  entirely. Not a regression; it had been true for several releases. The media
+  request now routes exactly like the login.
+
+- **Preview no longer dies about 11 seconds in on battery devices.** A battery
+  camera sends a heartbeat during a session and closes the session when the
+  client never answers. That answer existed only inside the recording-download
+  loop; every other long-running command reads through a shared loop that
+  dropped the frame. Measured on a battery doorbell: preview ran 11.0s, 10.9s
+  and 11.0s before, and 30s+ after, with every packet accounted for.
+
+[#105]: https://github.com/reolink/reolink-cli/issues/105
+
 ## [0.16.0] — 2026-09-02
 
 Snapshots got faster, and one class of snapshot stopped failing outright. Both
