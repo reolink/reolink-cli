@@ -102,6 +102,7 @@ Resolve ambiguity before picking a command. If still unclear, **ask with options
 | SD card / storage card / capacity / free space | `storage status` | Read-only; totalGB / remainGB / formatted / mounted |
 | manual record / record now / start recording | — | **Not supported** on Reolink IPCs; fall back to `record schedule set --enable/--disable` |
 | download yesterday / download recording | `vod search --since 24h` → `vod download NAME` | |
+| download 09:45–09:55 / just that clip / a time range | `vod download --from 2026-09-02T09:45:00 --to 2026-09-02T09:55:00` | Camera-side cut — do NOT download the whole hour and trim |
 | any alarms / any alarms today | `events query --since 24h` | Requires gateway |
 | event history further back than the live buffer / what happened last week / hub event log | `--channel N events history --since 7d [--types people,motion]` (hub/NVR only) | Reads the device's recorded event log (cmd 516/517), not the ~500-entry live ring. Standalone IPCs 400. Empty list = no matching events; a hub can go briefly quiet after heavy use, retry after a pause. |
 | voice alert / voice announcement / announce when someone arrives / play voice when a person is detected | `audio talk` (see `references/voice-alert.md`) | PCM16 LE mono only; needs `capabilities.audioTalk=1` |
@@ -257,7 +258,7 @@ A scene is a named set of per-channel task bits, so switching scenes re-arms the
 
 **Storage:** `storage status` (read-only SD/HDD capacity + mount state). **Forbidden** format/init ops — direct users to the Reolink app if they need to format.
 
-**VOD:** `vod search [--from ISO --to ISO | --since DURATION] [--type T,...] [--stream main|sub] [--limit N]`, `vod download NAME [-o FILE]`. Time must be **naive local ISO** (`YYYY-MM-DDTHH:MM:SS`, no TZ, no ms). Cross-month windows are handled for you (the gateway splits at month boundaries and merges); `limit` applies to the merged list, and `truncated` tells you it cut short. Filenames case-sensitive.
+**VOD:** `vod search [--from ISO --to ISO | --since DURATION] [--type T,...] [--stream main|sub] [--limit N]`, `vod download NAME [-o FILE]`, `vod download --from ISO --to ISO` (time range, the **camera** cuts it — one request per recording segment, joined; output is an Annex-B `.hevc`/`.h264` elementary stream, not MP4; unsupported models answer 400). Time must be **naive local ISO** (`YYYY-MM-DDTHH:MM:SS`, no TZ, no ms). Cross-month windows are handled for you (the gateway splits at month boundaries and merges); `limit` applies to the merged list, and `truncated` tells you it cut short. Filenames case-sensitive.
 Types: `manual|sched|io|md|people|vehicle|face|dog_cat|visitor|other|package`
 
 **Detection:** `detect motion {get|set|apply [--enable|--disable] [--sensitivity 0-100] [--use-pir|--disable-pir]}`, `detect ai {get|set|apply} --type TYPE [--sensitivity 0-100] [--stay-time SECS]`. `apply` is the idempotent recipe — prefer it for "set sensitivity to N"-style intent. AI types: `person|vehicle|dog_cat|package|cry` (subset varies by model).
