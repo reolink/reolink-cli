@@ -4,6 +4,61 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.17.0] — 2026-09-04
+
+`vod download` can now ask the camera for a time range and let it do the
+cutting, instead of fetching whole recordings and trimming them yourself.
+
+### Added
+
+- **`vod download --from/--to` — a time range, cut by the device ([#105]).**
+
+  ```sh
+  reolink-cli vod download --from 2026-09-02T09:45:00 --to 2026-09-02T09:55:00 \
+    --channel 5 --directory ./clips
+  ```
+
+  On an NVR a recording is typically a whole hour, so ten minutes of it used to
+  mean downloading a gigabyte and throwing away nine tenths of it — and a window
+  crossing the hour meant two files to join by hand.
+
+  There is no protocol document for this device command, so every statement
+  below is measured rather than quoted:
+
+  - **One request returns one recording.** The device answers with the *first*
+    recording the window touches, clipped to the window; a window starting in a
+    gap skips forward to the next recording. Verified against frame counts on
+    four windows of the same camera — 15s inside one recording gave 241 frames,
+    the whole 49s recording gave 749, a window spanning three recordings still
+    gave 749 (it stopped at the first one's end), and a window starting in a gap
+    gave 781 from the second recording.
+
+    So the CLI searches the window first and asks once per recording in it,
+    joining the pieces. That is what makes a window crossing a recording
+    boundary — on a continuously-recording NVR, any window crossing the hour —
+    come back whole. The three-recording window above joins to 2165 frames,
+    8.87 MB, in 3.4 s.
+
+  - **The output is an elementary stream, not MP4.** A download by name hands
+    back the MP4 the device stored; a cut is produced live and arrives as media
+    packets, so it lands as `.hevc` or `.h264`. Wrap it with
+    `ffmpeg -i clip.hevc -c copy clip.mp4` if you need a container.
+
+  - **Not every model implements it.** Nothing in the capability list advertises
+    it either; a model that lacks it answers 400, and downloading whole
+    recordings by name is unaffected.
+
+### Fixed
+
+- **`--directory` no longer renames a download to a guess.** Only the response
+  knows what the bytes turned out to be — the extension is read off the real
+  container or codec — but the `--directory` path used a name built before the
+  request went out. Downloading by name happened to be right (the device really
+  does return MP4); a cut got a raw HEVC stream in a file called `.mp4`.
+  `--file` still names an exact path; everything else now follows the response.
+
+[#105]: https://github.com/reolink/reolink-cli/issues/105
+
 ## [0.16.1] — 2026-09-04
 
 Three fixes, all of them cases where the CLI knew what had gone wrong and told
