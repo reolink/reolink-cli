@@ -4,6 +4,51 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.18.1] — 2026-09-06
+
+Both of these were found only after the reporter of #105 ran the real thing and
+posted what came back.
+
+### Fixed
+
+- **The by-name download's probe is rejected by an NVR (400) — the original
+  problem in #105.** On 0.18.0 his download answered `device rejected command 13
+  (400)`: the **first** step of the two-step handshake, before any data.
+
+  That probe had been cut down to a bare `<name>` because a Video Doorbell SE
+  rejected one carrying `streamType` *and* `channelId`. But the reference
+  implementation's own probe carries **`supportSub` + `streamType` and no
+  `channelId`** — so only `channelId` deserved to go, and the other two were
+  collateral. An RLN16-410 answers 400 to the stripped version, which is a fair
+  response to being asked to prepare a download without being told which stream.
+
+  The probe now matches the reference field for field; downloads by name were
+  re-tested on both streams.
+
+- **A time-range download now states its frame rate — without it, `-c copy`
+  produced a clip of the wrong length.** An elementary stream carries no
+  timestamps at all, so ffmpeg invents a rate: every frame is present and the
+  duration is wrong.
+
+  **The note in 0.18.0 saying the remux measured 49.856 s "within one frame" was
+  wrong.** That read the container duration, which reports the longest track —
+  the audio. Per track, the video was **2.0007 s**: 749 frames packed into two
+  seconds.
+
+  The device states the rate in the stream's opening packet and we were
+  discarding it. It now travels as `X-Frame-Rate`, appears as `frameRate` in the
+  CLI output, and the CLI prints the command to copy:
+
+  ```
+  ffmpeg -r 15 -i clip.hevc -i clip.aac -c copy clip.mp4
+  ```
+
+  `-r` goes **before** `-i` — it sets the *input* rate. Measured per track after
+  the fix: video 49.933 s at 15 fps over 749 frames, audio 49.856 s, against
+  49.828 s for the same recording downloaded by name. The 105 ms gap is the
+  device running at 15.02 fps while we state a whole 15 — 0.2%, and nothing is
+  re-encoded.
+
 ## [0.18.0] — 2026-09-04
 
 ### Added
