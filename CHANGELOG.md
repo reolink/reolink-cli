@@ -4,6 +4,49 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.18.3] — 2026-09-07
+
+Found while checking a report that `discover` does not see battery cameras. It
+does not, and there are two separate reasons.
+
+### Fixed
+
+- **A Home Hub with a single paired camera can be expanded now.** `device
+  expand` answered this, on a device that is a Hub and has a battery video
+  doorbell on channel 0:
+
+  ```
+  camera hub has a single populated channel (0); nothing to expand (not an NVR or Hub)
+  ```
+
+  — an inference stated as fact, and backwards. It treated "one populated
+  channel" as "this is a plain camera", but **one camera and one channel are
+  different claims**, and a hub with a single paired camera is both a real
+  setup and the one where expanding matters most: that child has no address on
+  the network, so `discover` cannot see it and this command is the only way to
+  register it.
+
+  The device already says which it is — the channel count reads 8 on that hub
+  and 1 on a plain camera — so the refusal now applies only when the device
+  itself does not claim more than one channel. Firmware that declines to report
+  a count keeps the old behaviour, because a lone channel there really is
+  indistinguishable from a plain camera. Verified: expanding registers the
+  child, and querying that entry reaches the doorbell.
+
+- **`device expand`'s help said Home Hub was unsupported.** Only `protocol=v30`
+  entries are refused; a Home Hub registered as v20 has always worked. The note
+  turned people away from a command that would have helped them.
+
+### Documentation
+
+- **`discover` now says what it cannot find**, in its own `--help`. Two kinds of
+  camera never answer, and neither is a fault in the scan: a **sleeping battery
+  camera** (the probe is answered by the camera's main application, which is
+  powered down while it sleeps — the same camera awake answers every time), and
+  a **camera paired to a Hub or NVR** (it has no address on the network at all;
+  the parent is what answers). Raising the timeout does not help: 2 s and 8 s
+  return the same list.
+
 ## [0.18.2] — 2026-09-07
 
 ### Fixed

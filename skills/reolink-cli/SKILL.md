@@ -21,7 +21,7 @@ Primary surface: `reolink-cli` (JSON stdout by default). Don't start the MCP ser
 |---|---|---|
 | `/reolink-cli:status` | `reolink-cli status` | user asks about current state / dashboard / "how are things" |
 | `/reolink-cli:features` | `reolink-cli features` | user asks what the plugin can do / "what can it do" |
-| `/reolink-cli:scan` | `reolink-cli discover` | scan local network / "scan" |
+| `/reolink-cli:scan` | `reolink-cli discover` | scan local network / "scan". **Finds only devices that are awake and have their own LAN address** — a sleeping battery camera does not answer (the responder lives in the main application, which is powered down), and a camera paired to a hub/NVR has no address at all: use `device expand <parent>` for those. |
 | `/reolink-cli:devices` | `reolink-cli device list` | list registered cameras |
 | `/reolink-cli:cache-clean` | `reolink-cli cache clean` dry-run→apply | clear old snapshots / "clear cache" |
 | `/reolink-cli:update` | `reolink-cli self-update` | upgrade to the latest release (checks GitHub, no-op if current) |
@@ -84,7 +84,7 @@ Resolve ambiguity before picking a command. If still unclear, **ask with options
 | **slow / how long / time taken / performance / latency / benchmark** | **`benchmark [--iterations N] [--phases ...] [--reuse-session]`** | Per-phase p50/p95/p99: connect, login, info, snapshot. `--reuse-session` for warm-path. Detail in `references/index.md`. |
 | **cpu / memory / device load / is the camera overloaded / stuttering** | **`config get performance`** | Live reading from the device: `cpuUsedPercent`, `codeRate`, `netDataRate`. Read-only and instantaneous — two calls a second apart legitimately differ. Not every model implements it; those answer a device-level rejection. Distinct from `benchmark`, which times the **client** round trip, not the camera. |
 | **rtsp / rtmp / flv address / stream URL / HA / Frigate / go2rtc / VLC** | **`stream url [--kind rtsp,rtmp,flv] [--stream main,sub,ext] [--with-auth]`** | Default `--kind rtsp --stream main`. `--with-auth` only when user explicitly wants one-shot pasteable URL. NVR: `device expand` then `--tag <nvr>`. Detail in `references/media.md`. |
-| nvr with 8 channels / RLN sub-cameras / channel N | `device expand <nvr-name> [--yes \| --names A,B,C]` | **NVR only**. Registers one entry per channel, tagged with parent name. After: `--tag <nvr-name>` fans out. |
+| nvr with 8 channels / RLN sub-cameras / channel N / **cameras paired to a Home Hub** | `device expand <parent-name> [--yes \| --names A,B,C]` | Any **v20** parent — RLN NVRs and a Home Hub alike. Registers one entry per populated channel, tagged with the parent name; after: `--tag <parent>` fans out. **This is the only way to reach a battery camera paired to a hub** — it has no address of its own, so `discover` cannot see it. Refused for `protocol=v30` entries. |
 | command rejected 400 / "model doesn't support it" / battery camera on a hub / first command after a pause | Nothing — the gateway already retries. `attempts` in the answer says which try got through (3 is normal after a pause, 1 during a burst) | A battery child behind a hub sleeps and then rejects commands with a bare 400, indistinguishable from unsupported. **When** it sleeps is not predictable from idle time alone (one day's readings said ~2 min; later overnight windows found it awake), so do not try to pre-empt it. What is consistent: a sleeping camera costs a flat 3 attempts (~1.6 s) to wake, and the refused request is itself the wake. If it still fails after the budget, `info` → `channel.loginState` = `standby` explains it — but **that field lags**, so it explains a failure, it cannot pre-flight one. |
 | dual-lens / two lenses / bullet+PTZ in one camera / wide and telephoto / second lens | `info` first (`channel.views`, `channel.dualLens`), then `--view N` on config commands | `--view` is a **third** axis: `--channel` picks the camera, `--view` picks the lens, `--stream` picks that lens's encoding profile. Verified per-view: `encode`, `privacy mask`, `detect motion`, PTZ. **Not** per-view: `snapshot` (device answers 400 for view≥1), `preview`/`stream url` (protocol has no selector — these now **reject** `--view N` rather than silently handing back view 0), image/ISP (shared). Default 0 = the only view an ordinary camera has. |
 | **preview / take a look / watch N minutes / watch live** | **`preview play`** (opens ffplay window) | **DEFAULT to `play`, not `capture`.** User wants a live window, not a file. |
@@ -208,7 +208,7 @@ Signatures only — run `<cmd> --help` for flag details; see `references/<topic>
 
 **Discovery / Registry:** `discover`, `device list|resolve|show|add|update|remove|import|inventory|analyze|expand`, `config init`
 
-**NVR multi-channel:** `device expand <nvr-name> [--yes | --names A,B,C] [--drop-parent]`. RLN-series only; one entry per channel auto-tagged with parent name.
+**NVR / Hub multi-channel:** `device expand <parent-name> [--yes | --names A,B,C] [--drop-parent]`. Any v20 parent (RLN-series **and** Home Hub); one entry per populated channel, auto-tagged with the parent name. A hub's paired battery cameras are only reachable this way — they have no LAN address, so `discover` never lists them. `protocol=v30` entries are refused.
 
 **Identity:** `ping`, `login`, `info`, `capabilities`
 
