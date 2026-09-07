@@ -4,6 +4,27 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.18.2] — 2026-09-07
+
+### Fixed
+
+- **A cut's reported frame rate came from the wrong place, and remuxing against
+  it changed the clip's length (#105).** 0.18.1 was right to pass a rate through
+  and wrong about where to read it: it used the byte in the stream's own info
+  header, which is correct on the sub stream and wrong on the main one, where it
+  announces a nominal 30 rather than what is delivered.
+
+  Measured on a Home Hub 2, main stream: the encoder reports 15, an 11-second
+  cut holds 162 frames (14.7 fps), and the header claims 30. Remuxed at 30, a
+  10.8-second clip became 5.4 — exactly half. The reporter's 25 fps cameras got
+  the same 30, turning an 11:00 clip into 9:10; 25/30 is precisely that ratio.
+
+  The rate now comes from the channel's encoder configuration, the source that
+  matched the frame count on every measurement. A device that does not answer
+  that command simply gets no `-r` hint and the cut itself is unaffected. A test
+  pins the header out of the path, so it cannot be reconnected by good
+  intentions.
+
 ## [0.18.1] — 2026-09-06
 
 Both of these were found only after the reporter of #105 ran the real thing and
