@@ -4,6 +4,85 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.19.0] — 2026-09-08
+
+`vod download --from/--to` now produces **MPEG-TS** (`.ts`) instead of a bare
+elementary stream, because the device's timeline is not constant-rate and no
+single frame rate can reconstruct it.
+
+### Breaking
+
+- **A time-range download's output changes from `.hevc`/`.h264` to `.ts`.** The
+  response no longer carries `frameRate`, and `remuxWith` no longer contains
+  `-r`:
+
+  ```
+  ffmpeg -i clip.ts -c copy clip.mp4
+  ffmpeg -i clip.ts -i clip.aac -c copy clip.mp4     # with --audio
+  ```
+
+  **Remove `-r <fps>` from your scripts.** The timing now lives in the file, and
+  a rate on the command line overrides it — which puts the old drift back.
+
+  Downloading by name is untouched: that is still the MP4 the device stored.
+
+### Fixed
+
+- **A cut clip drifted 0.2% against real time, and individual frames sat in the
+  wrong place.** Reported by someone cutting to an Ableton track in Premiere:
+  9 frames adrift over 3 minutes (0.36 s), where the desktop app's export was
+  not.
+
+  Two earlier attempts fixed *where the frame rate came from* — 0.18.1 read the
+  stream's own header byte (right on the sub stream, always 30 on a main stream
+  the encoder has at 15), 0.18.2 read the encoder's configuration. The real
+  answer is that **a single number cannot describe this stream at all.**
+  Measured on a 40.6-second recording: 386 intervals of 80 ms and 198 of 40 ms,
+  and the device's own stored MP4 reports `avg_frame_rate=305500/20327`. Even
+  remuxing at the exact average misplaces individual frames by up to 68 ms —
+  the same order as the complaint.
+
+  The device was sending the real timeline all along and we were discarding it:
+  every frame's BcMedia header carries its timestamp in microseconds. It now
+  travels with the video, in a container that can hold it.
+
+  Verified against the device's own file: a 30-second window came back as 451
+  frames whose 450 inter-frame gaps appear **verbatim** inside the gap sequence
+  of the same recording downloaded whole by name. Remuxed, that clip measures
+  30.032 s at `avg_frame_rate=56375/3754`; the old path at a flat 15 fps gave
+  30.067 s. Both codec paths were checked on real hardware (HEVC 3840×2160 main
+  stream, H.264 896×512 sub stream).
+
+- **`ffmpeg -i clip.hevc -c copy` without `-r` produced a 2-second, 8183 fps
+  file.** An elementary stream states no timing, so forgetting the flag was a
+  silent trap. A container removes it.
+
+- **A window spanning two recordings no longer plays the gap between them as a
+  frozen frame.** The device answers one request per recording, each a different
+  stretch of its clock. The pieces are now butted together: a window crossing a
+  9.5-minute gap came back as 800 frames over 53.1 s, with a largest
+  inter-frame gap of 81 ms.
+
+- **`discover`'s P2P leg was cut short by the LAN probe's timeout, so cameras
+  only it can see appeared and disappeared between scans.** In one report the
+  LAN leg found 13 devices every time while the P2P leg returned 0, 1, 2 or 3 —
+  and four of the UIDs in that log never appeared on the LAN at all. The four
+  legs run concurrently on one timeout sized for LAN probing, but the P2P leg
+  polls a table the library fills asynchronously, so the deadline decided how
+  much of it you got. Measured: 0 devices at 1/2/3/5 seconds, steady at 10.
+
+  The caller's timeout is now a **floor**: the scan then ends after 3 quiet
+  seconds, capped at 20. Before the fix the P2P leg returned nothing on 5 of 5
+  runs at default settings; after it, 5 of 5 found the device in 3.3 s.
+
+- **A UID-only target could fail immediately with `-7` right after a scan had
+  just enumerated it.** Enumeration proves the library heard the camera on the
+  LAN, so the failure was that the LAN entry had not landed in the library's
+  table yet, while `p2p_connect` read that table synchronously and fell through
+  to the cloud path. It now re-scans and retries, but only on a first `-7`, for
+  at most 6 seconds. A UID already in the table connects on the first try and
+  pays nothing.
+
 ## [0.18.3] — 2026-09-07
 
 Found while checking a report that `discover` does not see battery cameras. It
