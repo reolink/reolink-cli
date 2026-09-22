@@ -4,6 +4,39 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.19.1] — 2026-09-22
+
+A download whose consumer stops reading can no longer hold a camera
+indefinitely, and a multi-recording download stops fetching once the consumer
+is gone.
+
+### Fixed
+
+- **A download client that stops reading without closing its socket pinned the
+  camera (#114).** Reported as the gateway still streaming after
+  `vod download` was killed, with nothing reaching storage.
+
+  A socket write only fails once the peer has actually closed, and a killed
+  process normally has: `kill -9` mid-transfer releases the device session in
+  1–2 s in all three download shapes. What does not close is a socket that
+  outlives its reader — a process killed inside a container, a connection held
+  by something in between, a client frozen rather than reaped. Reproduced with
+  a frozen consumer: the gateway parked inside a write with 147 KB it could not
+  push, the camera connection open behind it, and the stop command never sent.
+  Nothing on that path had a deadline, so it never recovered.
+
+  Nothing distinguishes a frozen consumer from a very slow one except how long
+  it has been, so this takes a deadline rather than a signal: a chunk the
+  consumer has not accepted within 30 s ends the transfer the same way a closed
+  connection does — device session released, stop command sent. Thirty seconds
+  is far past any real disk stall and far short of leaving a camera pinned.
+
+- **On a multi-recording download, a consumer that went away was treated as
+  that one recording failing**, so the remaining names were still fetched off
+  the device into a connection nobody was reading. Six names meant five
+  pointless fetches; a 394-name request meant 393. A disconnect now ends the
+  whole request.
+
 ## [0.19.0] — 2026-09-08
 
 `vod download --from/--to` now produces **MPEG-TS** (`.ts`) instead of a bare
