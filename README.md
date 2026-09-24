@@ -12,10 +12,8 @@
 
 ---
 
-Operate Reolink IP cameras from the command line over your **local network** —
-JSON out by default, so everything pipes into `jq` or a script. The bundled MCP
-server and agent skill drive the same runtime, so an AI agent can do it in plain
-language.
+Control Reolink cameras over your **local network** — no cloud account, no app.
+Script it with `jq`, or let an AI agent drive it in plain language.
 
 ```console
 $ reolink-cli --camera front-door info | jq '{model, firmware, name}'
@@ -26,13 +24,37 @@ $ reolink-cli --camera front-door info | jq '{model, firmware, name}'
 }
 ```
 
+> **What this repository is.** The official distribution point for the prebuilt
+> `reolink-cli` binaries (proprietary, royalty-free EULA — see [License](#license)),
+> plus the agent skill, plugin manifests and installers (Apache 2.0). The CLI
+> source code is not published here.
+
+## Does it work with my camera?
+
+It talks to Reolink devices directly over your LAN:
+
+- **IP cameras and video doorbells** with a LAN address, wired or Wi-Fi
+- **NVRs and the Home Hub** — `device expand <nvr>` registers one entry per
+  channel, which is also the only way to reach a battery camera paired to a hub
+- **Battery cameras**, on your Wi-Fi or through a Home Hub — a sleeping camera
+  can take several seconds to answer the first command
+
+Features differ by model. Ask the camera rather than guessing:
+
+```bash
+reolink-cli --camera porch capabilities
+```
+
+An operation the model does not implement fails with a clear "device does not
+support" error, never silently.
+
 ## Highlights
 
 - 🔍 **Discovery** — LAN broadcast, plus bulk `device import`
 - 🎥 **Live media** — `preview play`, file/stdout capture, batch capture, JPEG snapshot
 - 🕹️ **PTZ** — pan/tilt/zoom, presets, patrol, guard, autotrack, real timed jog
 - 💡 **Lights** — IR, spotlight (with native **blink**), white-LED, status LED
-- 🎚️ **Video encoder** — read/change resolution, frame rate, bit rate, H.264/H.265, GOP per stream
+- 🎚️ **Video encoder** — resolution, frame rate, bit rate, H.264/H.265, GOP per stream
 - 📢 **Siren** — sound / silence the built-in siren on demand
 - 🧠 **Detection** — motion + AI (person / vehicle / dog_cat / package)
 - 📼 **Recording & storage** — schedule, SD/HDD status, VOD search & download
@@ -42,71 +64,62 @@ $ reolink-cli --camera front-door info | jq '{model, firmware, name}'
 - 🤖 **AI-native** — built-in MCP stdio server + cross-agent operator skill
 - 🧩 **Fleet-aware** — camera & tag selectors, local session daemon for a fast control plane
 
-## Commands
+The authoritative command list comes from the binary: `reolink-cli --help`,
+`reolink-cli <command> --help`, or `reolink-cli features` for a machine-readable
+manifest.
 
-The full, always-current list comes from the binary itself — run `reolink-cli
---help` for every command, `reolink-cli <command> --help` for its options, or
-`reolink-cli features` for a machine-readable manifest (what agents read). The
-table below is a snapshot for browsing.
-
-Almost every control command needs the local gateway running
-(`reolink-cli gateway start &`); read-only lookups like `discover` / `ping` do
-not. All operations are LAN-only in these public builds.
+<details>
+<summary>Command overview</summary>
 
 | Area | Commands | What you can do |
 |---|---|---|
 | **Setup & registry** | `init`, `device`, `config`, `doctor`, `setup` | Scaffold config, register/import cameras, tag them, health-check the install |
 | **Connect & inspect** | `ping`, `login`, `info`, `capabilities`, `status`, `benchmark` | Reach a camera, read model/firmware/serial, list what the model supports, measure round-trip latency |
 | **Discovery** | `discover` | Find cameras on the LAN (broadcast) |
-| **Live media** | `preview`, `snapshot`, `stream` | Play or capture live video, grab a JPEG, print RTSP/RTMP/FLV URLs for Frigate / Home Assistant / go2rtc / VLC |
-| **Image & encoder** | `image`, `encode`, `osd` | Flip/mirror, read/change resolution · frame rate · bit rate · H.264/H.265 · GOP per stream, on-screen name/time overlay |
+| **Live media** | `preview`, `snapshot`, `stream` | Play or capture live video, grab a JPEG, print RTSP/RTMP/FLV URLs |
+| **Image & encoder** | `image`, `encode`, `osd` | Flip/mirror, encoder settings per stream, on-screen name/time overlay |
 | **Lights** | `light` | IR / night vision, spotlight (with **blink**), white-LED, status LED |
-| **Audio** | `audio` | Volume, alarm mute, **siren** (sound/stop), quick replies, two-way talkback / TTS |
+| **Audio** | `audio` | Volume, alarm mute, **siren**, quick replies, two-way talkback / TTS |
 | **PTZ** | `ptz` | Pan / tilt / zoom, focus, presets, patrol, guard, autotrack, timed jog |
-| **Detection & events** | `detect`, `notify`, `events` | Motion + AI (person / vehicle / dog_cat / package), push settings, query/stream events + a declarative rule engine (`events monitor`) |
+| **Detection & events** | `detect`, `notify`, `events` | Motion + AI detection, push settings, query/stream events, rule engine |
 | **Recording & storage** | `record`, `vod`, `storage`, `log` | Recording schedule, VOD search & download, SD/HDD status, device logs |
 | **Privacy & users** | `privacy`, `users` | Privacy-mask regions, manage device accounts |
 | **Network** | `wifi` | Push a new SSID + PSK (pre-validated), auto-rediscover, update the registry |
 | **System** | `system` | Reboot |
-| **Gateway & tooling** | `gateway`, `mcp-server`, `plugin`, `cache`, `self-update`, `raw` | Run the control-plane gateway, expose MCP tools to AI agents, maintain the skill cache, send a raw Baichuan request |
+| **Gateway & tooling** | `gateway`, `mcp-server`, `plugin`, `cache`, `self-update`, `raw` | Run the local gateway, expose MCP tools, maintain the skill cache, send a raw device request |
 
-> **Support varies by model.** A command existing here does not guarantee your
-> camera implements it — an unsupported operation returns a clear "device does
-> not support" error rather than failing silently. Check a specific model with
-> `reolink-cli --camera <name> capabilities` or
-> `reolink-cli --camera <name> device inventory --capabilities`. `v30`-protocol
-> cameras are still provisional; `v20` is the stable surface.
+</details>
 
 ## Install
 
-### AI agents
-
-**Claude Code — no Node required.** Install the plugin from inside Claude Code:
+### Claude Code — no Node required
 
 ```text
 /plugin marketplace add reolink/reolink-cli
 /plugin install reolink-cli@reolink-cli
 ```
 
-The binary for your platform is fetched automatically the first time you ask
-about a camera. Then just talk to your agent: *“show me the front door camera”*,
-*“point the back-yard camera left”*, *“blink the porch spotlight 3 times”*.
+The plugin carries both the skill and the MCP server. The binary for your
+platform is fetched the first time you ask about a camera, and the agent starts
+the local gateway when it needs it. Then just talk: *“show me the front door
+camera”*, *“point the back-yard camera left”*, *“blink the porch spotlight 3
+times”*.
 
-**Other agents (Codex / Cursor / Gemini / Copilot / OpenCode / 70+) — requires
-[Node.js](https://nodejs.org).** The cross-agent `skills` installer places the
-skill into each agent’s own directory:
+### Other agents — requires [Node.js](https://nodejs.org)
+
+Codex, Cursor, Gemini, Copilot, OpenCode and 70+ others:
 
 ```bash
 npx skills@latest add reolink/reolink-cli
 ```
 
 Pick `reolink-cli` and the agents to install it into; the binary is fetched on
-first use, exactly as above.
+first use, as above.
 
 ### Command line only — no Node required
 
-One line — detects your platform, installs `reolink-cli` + `reolink-gateway` to
-`~/.local/bin`, and initializes config:
+Installs `reolink-cli` + `reolink-gateway` to `~/.local/bin` (no `sudo`) and
+initializes config:
 
 ```bash
 # macOS / Linux
@@ -118,28 +131,18 @@ curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh
 powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/reolink/reolink-cli/main/install.ps1 -UseBasicParsing | iex"
 ```
 
-Two details in that line, both learned the hard way:
+Both installers verify the download before installing anything — see
+[Installers](#installers) for exactly what they do.
 
-- `iwr` and `iex` are PowerShell aliases, so the bare `iwr … | iex` only works
-  if you are already in PowerShell. Pasted into the Command Prompt it fails with
-  `'iwr' is not recognized`, which names the alias rather than the cause. The
-  `powershell -NoProfile -Command "…"` wrapper works from either shell.
-- `-UseBasicParsing` matters on Windows PowerShell 5.1, where
-  `Invoke-WebRequest` otherwise hands the response to the Internet Explorer
-  engine for DOM parsing. On a machine where IE's first-launch configuration
-  never ran, that stalls or fails with `Access is denied` before anything is
-  downloaded. On PowerShell 7 it is already the default and the flag is a no-op.
-
-Already installed? On macOS/Linux, upgrade in place with
-`reolink-cli self-update --yes`. On Windows, re-run the installer
-(`install.ps1`) — see [Platform support](#platform-support) for why.
+**Upgrading:** `reolink-cli self-update --yes` on macOS/Linux. On Windows,
+re-run the installer (a running `.exe` cannot replace itself).
 
 <details>
 <summary>Prefer a downloadable archive?</summary>
 
 Grab the archive for your platform from the
 [latest Release](https://github.com/reolink/reolink-cli/releases/latest),
-extract, and run the bundled installer:
+[verify it](#verifying-a-download), extract, and run the bundled installer:
 
 ```bash
 tar -xzf reolink-cli-*.tar.gz && cd reolink-cli-*/ && ./install.sh
@@ -149,55 +152,63 @@ tar -xzf reolink-cli-*.tar.gz && cd reolink-cli-*/ && ./install.sh
 The archive is self-contained: binaries + the skill/plugin + installer +
 `THIRD-PARTY-LICENSES.txt`.
 
-To verify it, use `checksums/<tag>.sha256` on this repository's default branch,
-**not** the `SHA256SUMS` attached to the release — see
-[Verifying a download](#verifying-a-download) for why the difference matters.
-
 </details>
 
 <details>
 <summary>Uninstall</summary>
 
 ```bash
-reolink-cli setup --uninstall --purge && npx skills remove reolink-cli
+reolink-cli setup --uninstall            # add --purge to also delete config and the camera registry
+npx skills remove reolink-cli            # if you installed the skill with npx
 ```
 
-Claude Code users: also run `/plugin uninstall reolink-cli` to clean the marketplace entry.
+Claude Code users: also run `/plugin uninstall reolink-cli`.
 
 </details>
 
 ## Quick start
 
+**1. Start the gateway.** Most commands go through a small local process that
+keeps camera sessions open, so repeated commands are fast. Leave it running in
+its own terminal (or under your service manager):
+
 ```bash
-# Write the config and registry templates. Both land in your OS config
-# directory and are created owner-only (0600).
-reolink-cli config init
+reolink-cli gateway start --addr 127.0.0.1:9000
+```
 
-# Start the local gateway — most control commands route through it
-reolink-cli gateway start --addr 127.0.0.1:9000 &
+**2. Tell the CLI where it is** — for this shell, or permanently by adding
+`gateway-addr = "127.0.0.1:9000"` to `config.toml` (`reolink-cli doctor` prints
+where that file lives):
+
+```bash
 export REOLINK_GATEWAY_ADDR=127.0.0.1:9000
+```
 
-# Register your first camera. Pick a name of your own: `config init` writes
-# placeholder entries (front-door, garage, lab-v30) to show the file format,
-# and `device add` refuses to overwrite an existing one.
-reolink-cli device add porch --host 192.168.1.41 --user admin --tags outdoor,entry --password-stdin
+Port 9000 already taken (Portainer, MinIO, …)? Use any free port in both places.
 
-reolink-cli --camera porch login
+**3. Find a camera, register it, use it:**
+
+```bash
+reolink-cli discover                                      # cameras on your LAN
+reolink-cli device add porch --host 192.168.1.41 --user admin --password-stdin
 reolink-cli --camera porch info
 reolink-cli --camera porch snapshot --file ./porch.jpg
 ```
 
-The placeholder entries are examples, not cameras. Remove them once you have
-registered your own: `reolink-cli device remove front-door`.
+`--password-stdin` prompts for the password, so it never lands in your shell
+history. `device list` also shows a few disabled example entries the installer
+wrote to illustrate the file format — `device remove <name>` clears them.
 
-Bulk-import discovered devices (credentials via `REOLINK_PASSWORD`, never
-plaintext `--password` on the command line):
+Many cameras at once — credentials via the environment, never `--password`:
 
 ```bash
 export REOLINK_PASSWORD='<device-password>'
 reolink-cli --user admin device import
 unset REOLINK_PASSWORD
 ```
+
+`preview play` needs `ffplay` on `PATH` (or pass `--player`, or set
+`REOLINK_PLAYER`).
 
 ## Multi-device workflow
 
@@ -217,244 +228,126 @@ reolink-cli --tag outdoor device inventory --capabilities
 reolink-cli --tag outdoor snapshot           # fan out across a tag group
 ```
 
-## AI agents & MCP
+## Frigate, Home Assistant, go2rtc, VLC
 
-`reolink-cli` is built to be driven by AI agents. There are two ways in — a
-natural-language **skill** and a structured **MCP server** — both reusing the
-exact same core runtime as the CLI.
-
-### 1. Operator skill — talk to your cameras
-
-`npx skills@latest add reolink/reolink-cli` installs the `reolink-cli` skill
-into whichever agents you use. The skill teaches the agent the full command
-surface and the safety rules, so you just say what you want:
-
-> *“is the front door camera online?”*
-> *“point the driveway cam to preset 2, then take a snapshot”*
-> *“let me know if anyone shows up at the door tonight”*
-
-The agent maps intent to the right `reolink-cli` invocation, chains multi-step
-flows, and **never guesses device state** — it only reports what a command
-actually returned.
-
-### 2. MCP server — structured tools
-
-For agents that prefer typed tool calls, or tight automation loops:
+Print a camera's stream URLs, read from its real port configuration:
 
 ```bash
-reolink-cli mcp-server
+reolink-cli --camera porch stream url --kind rtsp,rtmp,flv --stream main,sub
 ```
 
-JSON-RPC 2.0 over stdio, reusing the same core runtime. Wire it into Claude Code:
+Credentials come back as separate JSON fields. `--with-auth` embeds
+`user:password@` in the URL for players that need it — treat that output as a
+password.
 
-```json
-"mcpServers": {
-  "reolink-cli": {
-    "command": "reolink-cli",
-    "args": ["mcp-server"],
-    "env": { "REOLINK_GATEWAY_ADDR": "127.0.0.1:9000" }
+## AI agents & MCP
+
+Two ways in, both driving the same runtime as the CLI:
+
+- **The skill** — natural language. It teaches the agent the command surface and
+  the safety rules, so you say *“point the driveway cam to preset 2, then take a
+  snapshot”* or *“let me know if anyone shows up at the door tonight”*. The agent
+  **never guesses device state** — it only reports what a command returned.
+- **The MCP server** — typed tool calls for tight automation loops. The Claude
+  Code plugin already registers it. For any other MCP client:
+
+  ```json
+  "mcpServers": {
+    "reolink-cli": {
+      "command": "reolink-cli",
+      "args": ["mcp-server"],
+      "env": { "REOLINK_GATEWAY_ADDR": "127.0.0.1:9000" }
+    }
   }
-}
-```
+  ```
 
-The gateway must be running separately — the MCP server routes through it,
-exactly as the CLI does.
+  JSON-RPC 2.0 over stdio; the gateway must be running, as for the CLI.
 
 ## Platform support
 
-Prebuilt binaries are published on each [Release](https://github.com/reolink/reolink-cli/releases):
+Prebuilt binaries on each [Release](https://github.com/reolink/reolink-cli/releases):
 
-- macOS arm64 (Apple Silicon)
-- Linux x86_64 and arm64 (glibc)
-- Linux x86_64 and arm64 (musl, statically linked) — Alpine, Home Assistant OS,
-  and slim Docker images, where the glibc archives cannot load at all
-- Linux armv7 and armv6 — a Raspberry Pi on a **32-bit** OS. armv7 covers the
-  Pi 2/3/4; armv6 covers the Pi 1 and Zero, whose CPUs cannot execute armv7 code
-  at all. Built against glibc 2.28, so Raspberry Pi OS Buster and later work.
-- Windows x86_64
+| OS | Architectures |
+|---|---|
+| macOS | arm64 (Apple Silicon) |
+| Linux (glibc) | x86_64, arm64 |
+| Linux (musl, static) | x86_64, arm64 — Alpine, Home Assistant OS, slim Docker images |
+| Linux 32-bit ARM | armv7 (Pi 2/3/4 on a 32-bit OS), armv6 (Pi 1 / Zero) — glibc 2.28+ |
+| Windows | x86_64 |
 
-`uname -m` alone does not decide this on a Pi. 32-bit Raspberry Pi OS has booted
-a 64-bit kernel by default since Bullseye, so `uname -m` says `aarch64` while the
-userland is 32-bit and has no arm64 loader — the arm64 archive cannot start
-there. What settles it is the userland:
+`install.sh` picks the right one for you, including on a Raspberry Pi whose
+64-bit kernel runs a 32-bit userland. Choosing by hand? `getconf LONG_BIT`
+decides arm64 vs armv7, not `uname -m`; and when unsure between glibc and musl,
+take musl — it runs on both, while a glibc build on a musl host fails with a
+confusing `symbol not found`. `file "$(command -v reolink-cli)"` says
+"statically linked" for a musl build.
 
-```bash
-getconf LONG_BIT    # 64 → arm64 archive;  32 → armv7 (or armv6 on a Pi 1/Zero)
-```
-
-`install.sh` reads that rather than the kernel, alongside the C library and the
-ARM revision, and picks the archive accordingly. Each is a separate asset
-(`…-linux-arm64.tar.gz` vs `…-linux-arm64-musl.tar.gz` vs
-`…-linux-armv7.tar.gz`) so an existing install keeps resolving the archive it
-was installed from — including `self-update`, which replaces a build with its
-own kind rather than guessing from the CPU it happens to be running on.
-
-**Which one did I get?** `--version` does not say, so read it off the binary:
-
-```bash
-file "$(command -v reolink-cli)"   # "statically linked" = musl build
-```
-
-This matters if you move the binary between machines. A glibc build on a musl
-host does not fail gracefully — it cannot load at all, and the error names a
-missing symbol rather than the real problem:
-
-```
-Error relocating ./reolink-cli: __res_init: symbol not found
-```
-
-The static musl build runs on both, so when in doubt use that one.
-
-### Home Assistant OS
-
-The `homeassistant` core container is aarch64 Alpine, so `shell_command` needs
-the musl build. Install it inside that container, not on the host:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh | sh
-```
-
-The gateway must be reachable from wherever the command runs — start it in the
-same container, or point `REOLINK_GATEWAY_ADDR` at one on the LAN.
-
-`self-update` covers macOS and Linux. On Windows it exits with the download
-link instead: the archive is a `.zip`, and a running `.exe` cannot be replaced
-in place — upgrade by extracting the new archive and running `install.ps1`.
-
-`preview play` expects `ffplay` on `PATH` (or pass `--player`, or set
-`REOLINK_PLAYER`).
-
-> Best supported on current Reolink IP cameras and NVRs over the LAN. Support
-> for some newer models may be partial — check a specific command with
-> `reolink-cli --camera <name> device inventory --capabilities`.
+**Home Assistant OS:** the `homeassistant` container is aarch64 Alpine. Run the
+one-line installer *inside that container* (it selects musl), and make sure the
+gateway is reachable from there — start it in the same container, or point
+`REOLINK_GATEWAY_ADDR` at one on the LAN.
 
 ## Responsible use
 
-This tool controls cameras and reads their recordings. Use it only on devices
-you own or are authorised to administer.
-
-- **Authorised devices only.** Discovery broadcasts on your LAN and login
-  attempts against cameras you do not control are unauthorised access in most
-  jurisdictions, regardless of intent.
-- **Not a scanner.** `discover` is a UDP broadcast for locating your own
-  cameras. Do not use it, or `ping`, to sweep networks you were not asked to
-  work on.
-- **The footage is someone's home.** Snapshots, recordings and the event
-  history this tool writes to disk are personal data. Protect them the way you
-  would protect the camera's own storage, and delete what you no longer need.
+Use this tool only on cameras you own or are authorised to administer.
+`discover` and `ping` are for locating your own devices, not for sweeping
+networks you were not asked to work on. Snapshots, recordings and event history
+written to disk are personal data — protect them like the camera's own storage,
+and delete what you no longer need.
 
 ## Security
 
 - **The gateway binds `127.0.0.1` by default** and refuses browser
-  cross-origin requests. Passing `--addr 0.0.0.0:9000` exposes camera control
-  to everyone on your LAN — do it deliberately, never by default.
-- **This is a LAN-only build.** It reaches cameras over the local network
-  (`--host <ip>`); remote access via Reolink's P2P relay is not included.
-  Confirm with `reolink-cli --version` → `(external · LAN-only)`.
-- **Report vulnerabilities privately** — see [SECURITY.md](SECURITY.md).
+  cross-origin requests. `--addr 0.0.0.0:9000` exposes camera control to your
+  whole LAN — do it deliberately.
+- **LAN-only build.** Remote access via Reolink's P2P relay is not included;
+  `reolink-cli --version` shows `(external · LAN-only)`.
+- **Report vulnerabilities privately** — see [SECURITY.md](SECURITY.md), which
+  also documents what the tool does by design.
 
 ### Safe credential handling
 
-- **Never pass `--password` on the command line.** It is visible to every other
-  user via `ps` and lands in your shell history. Use `--password-stdin`, the
-  `REOLINK_PASSWORD` environment variable, or register the camera once with
-  `device add` and refer to it by name.
-- **Stored passwords are encrypted at rest.** Camera passwords in
-  `aliases.toml` are AES-256-GCM ciphertext (`RLENC1:…`), decrypted with a key
-  in `credentials.key` beside it — beside whichever file holds the password, so
-  a registry redirected with `--cameras-file` / `REOLINK_CAMERAS_FILE` carries
-  its key in its own directory, and so does a redirected `config.toml` (it can
-  hold a password too). An existing plaintext config is converted automatically
-  the first time you run any command — you do not have to do anything. Both
-  files are owner-only (`0600`), and the CLI refuses to read them if they are
-  group- or world-readable. Do not relax that, and do not commit them anywhere.
-- **Back up the file and the `credentials.key` next to it, as a pair.** Neither
-  is usable without the other. If the key is lost the passwords cannot be
-  recovered and must be re-entered with `device update <camera>
-  --password-stdin`. The pair rule holds in every layout — a redirected profile
-  is self-contained:
-
-  ```bash
-  # everything this profile needs, from ITS directory (not the default one)
-  cp /srv/cams/site-a/aliases.toml /srv/cams/site-a/credentials.key /backup/site-a/
-  ```
-
-  Restoring a registry without its neighbouring key fails loudly — every stored
-  password reports "cannot be decrypted — the key file is missing" — never
-  silently.
-- **Separate registries are separate secrets.** Each `--cameras-file` profile
-  keeps its own key, so sharing one profile's pair does not let anyone decrypt
-  another profile's registry. Before 0.12.4 every profile shared a single key
-  in the default config directory; a key still living there is read as a
-  fallback until the next write places it beside its file.
-- **This protects the file, not the account.** The key sits next to the data, so
-  anything that can read both can decrypt. What it removes is the casual
-  exposure: a copied config, a backup, or an AI agent reading the file no longer
-  hands over every camera credential in the clear.
-- **Credentials never go in a URL.** Gateway media endpoints take a session
-  token instead, which expires after 300 s of inactivity.
-- **`stream url --with-auth` is the one exception** — it embeds
-  `user:password@` in the printed RTSP/RTMP/FLV URL because players need it
-  there. That URL is a live credential: do not paste it into a ticket, a chat,
-  or a dashboard others can read. Without the flag, no credentials are printed.
-- **Redact before sharing output.** Command output can contain UIDs, serial
-  numbers, LAN addresses and stream URLs.
+- **Never pass `--password` on the command line** — it shows up in `ps` and
+  your shell history. Use `--password-stdin`, `REOLINK_PASSWORD`, or register
+  the camera once with `device add` and refer to it by name.
+- **Stored passwords are encrypted at rest** (AES-256-GCM) with a
+  `credentials.key` kept next to the registry. Config files are owner-only
+  (`0600`) and the CLI refuses to read them otherwise. **Back up the registry and
+  its `credentials.key` as a pair** — neither works without the other. Details:
+  [SECURITY.md → Stored credentials](SECURITY.md#stored-credentials).
+- **Credentials never go in a URL.** Gateway media endpoints use a session token
+  that expires after 300 s of inactivity. The one exception is
+  `stream url --with-auth`, which you ask for explicitly.
+- **Redact before sharing output** — it can contain UIDs, serial numbers, LAN
+  addresses and stream URLs.
 
 ## Installers
 
-`install.sh` and `install.ps1` fetch and run executables, so here is exactly
-what they do:
+`install.sh` and `install.ps1` are plain text — read them before running. They:
 
-- resolve the latest release from the GitHub API, then download that release's
-  asset from `github.com` — no other host is contacted
-- **verify the download against `checksums/<tag>.sha256` committed to this
-  repository's default branch**, and abort on any mismatch, missing entry, or
-  missing checksum file — never against the checksum attached to the release
-  itself. A release asset can be replaced by one API call and the attached
-  checksum regenerated with it; a file on the default branch sits behind a
-  reviewed pull request and permanent history. This is an integrity check, not
-  a signature: it moves the anchor out of the release, it does not prove who
-  built the archive.
+- download the latest release from `github.com` only
+- **verify it against `checksums/<tag>.sha256` committed to this repository's
+  default branch**, never the checksum attached to the release, and abort on any
+  mismatch or missing entry
 - install two binaries to `~/.local/bin` (`%USERPROFILE%\.local\bin` on
-  Windows) — **no `sudo`, no system directories, no services**
-- stop a running `reolink-gateway` **only if it runs from that same prefix**,
-  so another installation is never touched
+  Windows) — no `sudo`, no system directories, no services
+- stop a running `reolink-gateway` only if it runs from that same prefix
 - overwrite previous binaries in that prefix; nothing else on disk is modified
 - add the prefix to your user `PATH` if it is missing (Windows)
 
-They are ordinary text files: read them before running, as you should with any
-install script.
-
 ### Verifying a download
 
-To skip the installers, download an archive from the
-[Releases](https://github.com/reolink/reolink-cli/releases) page and verify it
-against the checksum committed to this repository, then copy the two binaries
-wherever you like:
-
 ```bash
-tag=v0.10.6                                   # the release you downloaded
+tag=vX.Y.Z                                    # the release you downloaded
 curl -fsSL -o CHECKSUMS \
   "https://raw.githubusercontent.com/reolink/reolink-cli/main/checksums/$tag.sha256"
 shasum -a 256 -c CHECKSUMS --ignore-missing    # sha256sum -c on Linux
 ```
 
-Use that file, **not** the `SHA256SUMS` attached to the release. Anyone who can
-replace a release asset can regenerate the checksum attached beside it in the
-same API call, so a checksum from the release can only ever detect accidental
-corruption. The committed file sits behind a reviewed pull request and permanent
-history.
-
-**What this does and does not prove.** It proves the archive is the one whose
-hash was committed. It does not prove who built it: the checksum is written by
-the same release process that produces the archive, so an attacker who can
-commit to the default branch can publish a matching pair. Closing that needs a
-signature anchored outside the pipeline, which this project does not yet have —
-tracked in [SECURITY.md](SECURITY.md).
-
-`REOLINK_REPO` changes where the **archive** is downloaded from. It does not
-change where the checksum comes from; that is pinned to `reolink/reolink-cli`,
-so a fork serving its own build fails verification rather than validating itself.
+Use this committed file, **not** the `SHA256SUMS` attached to the release:
+whoever can replace a release asset can regenerate the checksum beside it. This
+proves integrity, not who built the archive — [SECURITY.md](SECURITY.md#download-verification-what-it-proves-and-what-it-does-not)
+states exactly what it does and does not cover.
 
 ## Trademarks
 
@@ -465,11 +358,11 @@ remove the marks; see [TRADEMARKS.md](TRADEMARKS.md).
 
 ## License
 
-- **This repository** — the skill, plugin manifests, and docs (text) — is
+- **This repository** — the skill, plugin manifests, installers and docs — is
   licensed under the **[Apache License 2.0](LICENSE)** (see also [NOTICE](NOTICE)).
 - **The prebuilt `reolink-cli` binaries** on the
   [Releases](https://github.com/reolink/reolink-cli/releases) page are
   **proprietary**, governed by the EULA bundled in each release archive. The
-  underlying CLI source is not published here.
+  CLI source is not published here.
 - **Third-party open-source components** bundled in the binaries are listed in
   `THIRD-PARTY-LICENSES.txt` inside each release archive.
