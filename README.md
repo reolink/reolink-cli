@@ -86,7 +86,7 @@ manifest.
 | **Privacy & users** | `privacy`, `users` | Privacy-mask regions, manage device accounts |
 | **Network** | `wifi` | Push a new SSID + PSK (pre-validated), auto-rediscover, update the registry |
 | **System** | `system` | Reboot |
-| **Gateway & tooling** | `gateway`, `mcp-server`, `plugin`, `cache`, `self-update`, `raw` | Run the local gateway, expose MCP tools, maintain the skill cache, send a raw device request |
+| **Gateway & tooling** | `gateway`, `mcp-server`, `plugin`, `cache`, `self-update` | Run the local gateway, expose MCP tools, maintain the skill cache, update the binaries |
 
 </details>
 
