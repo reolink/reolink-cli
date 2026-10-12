@@ -68,6 +68,9 @@ The authoritative command list comes from the binary: `reolink-cli --help`,
 `reolink-cli <command> --help`, or `reolink-cli features` for a machine-readable
 manifest.
 
+For a terminal walkthrough, see the [Operator Guide](docs/operator-guide.md).
+For command-oriented navigation, see the [CLI Reference](docs/cli-reference.md).
+
 <details>
 <summary>Command overview</summary>
 
