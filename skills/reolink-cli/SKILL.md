@@ -1,6 +1,6 @@
 ---
 name: reolink-cli
-description: "Provides the only correct mechanism for operating Reolink network cameras locally — the installed `reolink-cli` binary plus its gateway. **You MUST consult this skill whenever the user wants to do anything with an IP / network / surveillance / doorbell camera on their LAN, even if they never say \"Reolink\"** — e.g. \"front-door cam\", \"garage camera\", \"IP camera at 192.168.x.x\", \"make it brighter\", \"stream URL\", \"too dark\", \"upside down\", \"sound the siren\", \"scare them off\", \"arm the house\", \"i am leaving\", \"set it to away mode\", \"disarm\", \"lower the bitrate\", \"change resolution\", \"switch to h265\", \"upgrade firmware\", \"flash firmware\". Covers discovery, login, snapshots, live preview, PTZ, IR/spotlight/LEDs, image tuning, OSD, the manual siren, scene / arming modes on a hub, video encoder settings (resolution / frame rate / bit rate / H.264-H.265), motion + AI detection (person/vehicle/pet/package), recording + SD-card status, VOD search/download, alarm events, user accounts, reboot, firmware upgrade, and RTSP/RTMP/FLV stream URLs (Frigate / Home Assistant / go2rtc / VLC). Do NOT trigger when the user names a competing brand (Nest, Ring, Wyze, Eufy, Amcrest, Hikvision, Arlo) or asks a generic networking / Frigate-config question not tied to operating a specific camera."
+description: "Operate Reolink cameras through the separately installed local CLI and gateway. Use for Reolink device discovery, inspection, snapshots, preview, PTZ, lights, audio, detection, recording, Hub management, and firmware workflows. Requires local execution and camera network access. For an unspecified camera brand, establish that it is Reolink before using this skill. Do not use for other brands or unrelated networking questions."
 metadata:
   openclaw:
     requires:
@@ -13,7 +13,11 @@ metadata:
 
 ## Overview
 
-Primary surface: `reolink-cli` (JSON stdout by default). Don't start the MCP server unless asked. When the user needs non-CLI access (browser, curl, other languages), point them at the gateway's `POST /api`.
+For container or remote-gateway deployments, read `references/containers.md`
+and use the selected gateway. The native `gateway start` examples below apply
+only when the user has chosen a local native deployment.
+
+Primary surface: `reolink-cli` (JSON stdout by default). Claude Code also loads the local MCP server declared in its manifest; other hosts do not need MCP for these CLI workflows. Do not start a second MCP server for CLI tasks. When the user needs non-CLI access (browser, curl, other languages), point them at the gateway's `POST /api`.
 
 **Slash commands (Claude Code only)** — prefer these for fixed/single-action intents; skip the intent-mapping overhead:
 
@@ -66,7 +70,8 @@ Resolve ambiguity before picking a command. If still unclear, **ask with options
 | User says | Command | Why / caveat |
 |---|---|---|
 | add a user | `users add` | Device account, NOT a CLI camera entry |
-| add a camera | `device add` | CLI camera entry (`~/.config/reolink-cli/aliases.toml`), NOT a device account |
+| add a camera | `device add` for a local entry; `hub add` to pair a real child to a Hub | Ask which operation if unclear; see `references/setup.md` |
+| remove / unbind a Hub child | `hub remove` | Real unbinding, distinct from local `device remove`; set a new standalone password and inspect channels afterward |
 | change password | `users passwd` (default) OR `device update` (CLI creds) | Ask which |
 | blinking light | `light statusled` | Body LED |
 | night vision | `light ir` | Invisible IR LED |
@@ -83,7 +88,7 @@ Resolve ambiguity before picking a command. If still unclear, **ask with options
 | snapshot | `snapshot [--file PATH]` | JPEG. **Parent directories are auto-created** by the binary (since v0.5.0) — do NOT pre-`mkdir -p` the destination. Same for `vod download` and `preview capture --file`. |
 | **slow / how long / time taken / performance / latency / benchmark** | **`benchmark [--iterations N] [--phases ...] [--reuse-session]`** | Per-phase p50/p95/p99: connect, login, info, snapshot. `--reuse-session` for warm-path. Detail in `references/index.md`. |
 | **cpu / memory / device load / is the camera overloaded / stuttering** | **`config get performance`** | Live reading from the device: `cpuUsedPercent`, `codeRate`, `netDataRate`. Read-only and instantaneous — two calls a second apart legitimately differ. Not every model implements it; those answer a device-level rejection. Distinct from `benchmark`, which times the **client** round trip, not the camera. |
-| **rtsp / rtmp / flv address / stream URL / HA / Frigate / go2rtc / VLC** | **`stream url [--kind rtsp,rtmp,flv] [--stream main,sub,ext] [--with-auth]`** | Default `--kind rtsp --stream main`. `--with-auth` only when user explicitly wants one-shot pasteable URL. NVR: `device expand` then `--tag <nvr>`. Detail in `references/media.md`. |
+| **rtsp / rtmp / flv address / stream URL / HA / Frigate / go2rtc / VLC** | **`stream url [--kind rtsp,rtmp,flv] [--stream main,sub,ext] [--with-auth]`** | Default `--kind rtsp --stream main`. `--with-auth` is for the user to run in a local terminal, never through an AI tool call. NVR: `device expand` then `--tag <nvr>`. Detail in `references/media.md`. |
 | nvr with 8 channels / RLN sub-cameras / channel N / **cameras paired to a Home Hub** | `device expand <parent-name> [--yes \| --names A,B,C]` | Any parent — RLN NVRs and a Home Hub alike. Registers one entry per populated channel, tagged with the parent name; after: `--tag <parent>` fans out. **This is the only way to reach a battery camera paired to a hub** — it has no address of its own, so `discover` cannot see it. |
 | command rejected 400 / "model doesn't support it" / battery camera on a hub / first command after a pause | Nothing — the gateway already retries. `attempts` in the answer says which try got through (3 is normal after a pause, 1 during a burst) | A battery child behind a hub sleeps and then rejects commands with a bare 400, indistinguishable from unsupported. **When** it sleeps is not predictable from idle time alone (one day's readings said ~2 min; later overnight windows found it awake), so do not try to pre-empt it. What is consistent: a sleeping camera costs a flat 3 attempts (~1.6 s) to wake, and the refused request is itself the wake. If it still fails after the budget, `info` → `channel.loginState` = `standby` explains it — but **that field lags**, so it explains a failure, it cannot pre-flight one. |
 | dual-lens / two lenses / bullet+PTZ in one camera / wide and telephoto / second lens | `info` first (`channel.views`, `channel.dualLens`), then `--view N` on config commands | `--view` is a **third** axis: `--channel` picks the camera, `--view` picks the lens, `--stream` picks that lens's encoding profile. Verified per-view: `encode`, `privacy mask`, `detect motion`, PTZ. **Not** per-view: `snapshot` (device answers 400 for view≥1), `preview`/`stream url` (protocol has no selector — these now **reject** `--view N` rather than silently handing back view 0), image/ISP (shared). Default 0 = the only view an ordinary camera has. |
@@ -124,6 +129,23 @@ Resolve ambiguity before picking a command. If still unclear, **ask with options
 | clean up / clear cache / delete old snapshots / clean cache | `cache clean [--older-than 7d] [--category X] [--apply]` | Dry-run by default — always preview first, run `--apply` only after the user sees the list |
 
 ## Workflow
+
+**Container deployments:** use the Docker-backed `reolink-cli` entry on PATH
+when installed. Otherwise, when `REOLINK_CONTAINER` is selected, run every CLI
+invocation through the packaged `scripts/run-cli.sh` (`run-cli.cmd` on Windows).
+`REOLINK_DOCKER_CONTEXT` optionally selects a NAS context. MCP and piped calls
+forward stdin without a TTY; interactive Unix terminals support password prompts.
+Keep configuration and credentials in the container. Do not start another gateway
+or use native update/uninstall steps. Save media under `/data/cache/reolink-cli/`, then retrieve only the
+authorized file with `docker cp`; a container path is not readable by a desktop
+image tool. For MCP, the installed desktop entry supports the existing
+`reolink-cli mcp-server` command. Without it, configure
+`docker exec -i CONTAINER reolink-cli mcp-server` instead of the native entry.
+Use a known camera IP if bridge networking prevents broadcast discovery.
+
+When the agent itself runs in a separate container (including OpenClaw), read
+`references/containers.md` first. Use the supplied CLI image layer, shared media
+paths and `REOLINK_GATEWAY_ADDR`; the host Docker launcher is for host execution.
 
 **Default: just run the command.** The gateway daemon caches auth across CLI invocations, so the agent doesn't pay ping+login per command. Most user intents map to **one** CLI call (`info`, `get`, `apply`, `snapshot`, `stream url`, …).
 
@@ -214,7 +236,14 @@ Signatures only — run `<cmd> --help` for flag details; see `references/<topic>
 
 **NVR / Hub multi-channel:** `device expand <parent-name> [--yes | --names A,B,C] [--drop-parent]`. Any parent (RLN-series **and** Home Hub); one entry per populated channel, auto-tagged with the parent name. A hub's paired battery cameras are only reachable this way — they have no LAN address, so `discover` never lists them. `protocol=v30` entries are refused.
 
+**Hub binding:** `--camera HUB --channel N hub add --device-host IPv4[:port]` or `--device-uid UID`; `hub remove [--restore-user admin] [--yes]`. Parent Hub must be reachable over LAN. Child passwords use a secure prompt or `--device-password-stdin` / `--restore-password-stdin`; never put them on argv. Explicit channel 0–63 is required; child aliases and batch selection are rejected. `hub remove` sets a nonempty standalone password and does not reassign Wi-Fi. Inspect channels afterward; after addition, use `device expand` for local aliases. Never automatically retry after a timeout (64s device budget, 120s CLI response budget). Details in `references/setup.md`.
+
 **Identity:** `ping`, `login`, `info`, `capabilities`
+
+**Device time:** `system time` reads clock, DST and NTP diagnostics. `system dst get`
+reads regional rules. DST writes change device settings: inspect current values,
+confirm intent, then use `system dst set`; verify the read-back. `--preset us` is
+an explicit regional preset, not automatic timezone detection.
 
 **Config paths** (`config get/set PATH` with merge semantics):
 `led`, `device-name`, `language`, `time-zone`, `time-format`, `network`, `osd`, `osd-format`, `system-general` (get-only).
@@ -232,7 +261,7 @@ Signatures only — run `<cmd> --help` for flag details; see `references/<topic>
 
 **Gateway log files (since 0.12.5):** the gateway always writes a compact single-line log to `<cache-dir>/logs/gateway-<pid>.log` (`~/.cache/reolink-cli/logs/` on Linux, `~/Library/Caches/reolink-cli/logs/` on macOS, `%LOCALAPPDATA%\reolink-cli\logs\` on Windows) at `info` level; files older than 14 days are pruned at startup, and `cache clean --category logs` manages them like any other cache category. **To collect evidence after a failed run: zip the `logs/` directory — no pre-configuration needed.** For deep traces re-run with `RUST_LOG=debug` (adds per-round LAN probe results, every TCP connect attempt with address+outcome, uid-cache hits with age). `REOLINK_LOG_FILE=off` disables the file; `REOLINK_LOG_FILE=<path>` redirects it (user-managed, no pruning). Credentials never appear in logs; entries do contain hosts/UIDs/SSIDs, so redact before posting publicly.
 
-**Stream URLs:** `stream url [--kind rtsp,rtmp,flv] [--stream main,sub,ext] [--with-auth]` — defaults to `rtsp main`. `--with-auth` embeds creds (use only when user wants pasteable URL); without it ships sibling `user`/`password` JSON fields. NVR: `device expand` then `--tag <nvr> stream url`. RTSP path is `/Preview_{NN}_{main|sub|ext}`. Detail in `references/media.md`.
+**Stream URLs:** `stream url [--kind rtsp,rtmp,flv] [--stream main,sub,ext] [--with-auth]` — defaults to `rtsp main`. Default output omits the password. `--with-auth` embeds credentials in the URL; have the user run it locally if they need an authenticated playback URL, and keep that output out of AI tool results, chat, logs, and shared reports. NVR: `device expand` then `--tag <nvr> stream url`. RTSP path is `/Preview_{NN}_{main|sub|ext}`. Detail in `references/media.md`.
 
 **Light:** `light {ir|statusled} {get|set --state auto|on|off}`, `light ir apply --state auto|on|off` (recipe; prefer for "set X"), `light spotlight set --enable|--disable [--duration]`, `light whiteled {get|set [--enable|--disable] [--brightness 0-100] [--alarm-mode] [--detect-type T,...]}`. *Caveat:* E-series can `ok:true` on `light ir set` while silently keeping old state — `apply` recipe surfaces this in `verified:false`; check `device inventory --capabilities` if write ignored.
 
@@ -283,6 +312,10 @@ Types: `manual|sched|io|md|people|vehicle|face|dog_cat|visitor|other|package`
 
 Single entry `POST /api` with `Authorization: Bearer <token>` and body `{action, path, params}`. Login is itself a call: `{action:"set", path:"auth.login", params:{username, password, host, protocol?, channel?}}` → `{status:"success", data:{token, info}}`. Streaming endpoints (`/api/events`, `/api/preview/video`, `/api/snapshot`, `/api/vod/download`) take `?token=` in the query for browser-native elements; the token supplies the device credentials server-side, so **never put `user`/`password` in a URL** (requests without a valid token are rejected 401/403). See `references/gateway-http.md` for curl recipes and the full spec.
 
+## Privacy and authorization
+
+Operate only cameras the user owns or is authorized to administer. Have users enter camera passwords in a local terminal prompt; never ask them to paste passwords, keys, or authenticated stream URLs into chat. Do not read credential files or request `--with-auth` in an agent tool call. Show only the device details needed for the task. Before sharing a snapshot, recording, or event history with the AI host or another destination, explain what will be shared and obtain the user's authorization; a request to inspect a particular image authorizes that image only. See `references/privacy.md` for recipients, storage, retention, and deletion controls.
+
 ## Side-effectful commands
 
 **Must** confirm with the user before running any of these. **Forbidden** executing them opportunistically or as part of a read-only inspection flow:
@@ -296,6 +329,8 @@ Single entry `POST /api` with `Authorization: Bearer <token>` and body `{action,
 | `scene set` / `scene edit` | Re-arms every channel on the hub at once. `scene edit --tasks` **replaces** the task set, so a scene edited down to nothing records and notifies nothing (`references/scene-mode.md`) |
 | `encode set` (resolution change) | Restarts the encoder — live preview / RTSP / NVR consumers drop |
 | `privacy mask --disable` | Unmasks previously hidden regions |
+| `hub add` / `hub remove` | Changes real Hub bindings; unbinding changes standalone credentials and can interrupt access or recording. Inspect channels and never retry blindly |
+| `system upgrade` | Flashes firmware; wrong model or interrupted power can make the device unusable |
 | `system reboot` | 30–60s downtime; aborts in-flight |
 | `users remove|passwd` (others) | Affects login; session persists until reboot |
 | `record schedule --disable` | No new recordings |
@@ -331,8 +366,7 @@ events monitor expands `~/` in `path` and `pcm` fields and auto-`mkdir -p`'s the
 
 ## Launcher
 
-Prefer the installed binary: `reolink-cli …`. Plugin-bundled:
-`${CLAUDE_PLUGIN_ROOT}/scripts/run-cli.{sh,cmd}`.
+Prefer the installed binary: `reolink-cli …`. In Claude Code, the bundled launcher is `${CLAUDE_PLUGIN_ROOT}/scripts/run-cli.{sh,cmd}`. Other hosts should use the installed CLI directly.
 
 ## References
 
@@ -340,8 +374,9 @@ Topic-scoped recipe files. **Must** load only the one matching your task; **Forb
 
 | File | Read when |
 |---|---|
-| `references/setup.md` | Discovery, registry, identity, generic `config get/set` |
+| `references/setup.md` | Discovery, registry, Hub child binding/unbinding, identity, generic `config get/set` |
 | `references/media.md` | Preview / snapshot / VOD |
+| `references/privacy.md` | Data sharing, recipients, retention, and deletion controls |
 | `references/controls.md` | Light / image / OSD / audio / privacy |
 | `references/ptz.md` | Any `ptz …` |
 | `references/detection.md` | Motion / AI detection (`detect motion`, `detect ai`) |

@@ -1,0 +1,44 @@
+# Merge with OpenClaw's own Compose file, after starting the separate Reolink stack.
+# Requires Docker Engine 26+ / Compose 2.35+ for volume subpaths.
+x-reolink-agent: &reolink-agent
+  image: ${REOLINK_AGENT_IMAGE:?Set a version-pinned agent image built with container/agent.Dockerfile}
+  environment:
+    REOLINK_GATEWAY_ADDR: reolink:9000
+  volumes:
+    - type: volume
+      source: reolink-data
+      target: /data/config
+      read_only: true
+      volume:
+        subpath: config
+        nocopy: true
+    - type: volume
+      source: reolink-data
+      target: /data/cache
+      volume:
+        subpath: cache
+        nocopy: true
+    - type: volume
+      source: reolink-data
+      target: ${REOLINK_AGENT_MEDIA_DIR:-/home/node/.openclaw/workspace/reolink-media}
+      read_only: true
+      volume:
+        subpath: cache
+        nocopy: true
+services:
+  openclaw-gateway:
+    <<: *reolink-agent
+    networks:
+      - default
+      - reolink
+  openclaw-cli:
+    <<: *reolink-agent
+    network_mode: service:openclaw-gateway
+networks:
+  reolink:
+    external: true
+    name: ${REOLINK_NETWORK:-reolink-cli_default}
+volumes:
+  reolink-data:
+    external: true
+    name: ${REOLINK_DATA_VOLUME:-reolink-cli_reolink-data}

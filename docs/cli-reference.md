@@ -297,3 +297,27 @@ see the [MCP Guide](mcp-guide.md).
 - [Skill entry point](../skills/reolink-cli/SKILL.md)
 - [Reference index](../skills/reolink-cli/references/index.md)
 - [Troubleshooting](../skills/reolink-cli/references/troubleshooting.md)
+
+## Event index and device time (0.21.0)
+
+```bash
+reolink-cli --camera nvr --channel 5 vod alarms --from 2026-11-01T00:00:00 --to 2026-11-01T23:59:59 --type people --limit 100
+reolink-cli --camera nvr system time
+reolink-cli --camera nvr system dst get
+```
+
+`vod alarms` uses the separate alarm-video index and returns reported alarm
+intervals, channel/type, file name/ID and recording flags. `source` is
+`alarm-video-index`; `scanned` counts examined intervals before local filtering,
+and `truncated` indicates a scan limit. Ordinary `vod search` file metadata is
+preserved. Use device-local explicit time bounds when host/device time zones differ.
+
+`system dst set` changes device settings and reads them back for verification.
+Inspect existing settings and confirm the regional rule before applying it:
+
+```bash
+reolink-cli --camera nvr system dst set --enable --preset us
+```
+
+The US preset is explicit; it is not inferred from the device's UTC offset.
+See the operator guide for custom rules and partial-write behavior.

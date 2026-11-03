@@ -282,3 +282,11 @@ not include passwords, credential files, or complete configuration directories.
 - [CLI Reference](cli-reference.md) — command-oriented CLI index
 - [Security Policy](../SECURITY.md) — reporting and data-handling guidance
 - `reolink-cli mcp-server --help` — release-specific startup options
+
+## Classified alarm-video intervals
+
+`camera_vod_alarms` is a read-only tool for the separate device alarm-video
+index. Required `from` and `to` values use the device's local wall clock;
+optional inputs include `camera`, `channel`, `recordType`, `streamType` and
+`limit`. Results are alarm intervals, not rewritten ordinary recording metadata.
+A firmware-specific unsupported response remains an error, not an empty success.

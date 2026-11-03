@@ -1,0 +1,5 @@
+# Linux hosts: allow LAN broadcast discovery; keep the gateway on loopback.
+services:
+  reolink:
+    network_mode: host
+    command: [reolink-gateway, --addr, "127.0.0.1:9000"]

@@ -2,6 +2,8 @@
 description: Upgrade reolink-cli + reolink-gateway to the latest release
 ---
 
+**Container deployments (Docker-backed entry or `REOLINK_CONTAINER`):** update the selected published image version and recreate the Compose service with its existing data volume. Use the container recipe in the repository distribution guide; report the old/new container CLI versions. Do not run `self-update` or kill host gateways for a container deployment. Stop here after the container workflow; the steps below are for native installations.
+
 Upgrade the installed binaries to the latest release.
 
 1. Run the built-in updater:

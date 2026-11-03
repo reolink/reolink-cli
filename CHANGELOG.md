@@ -4,6 +4,46 @@ All notable changes to the public `reolink-cli` distribution are documented here
 This is the customer-facing release history; it tracks the LAN-only (external)
 builds published as GitHub Releases.
 
+## [0.21.0] - 2026-11-03
+
+### Added
+
+- Query classified alarm-video intervals with `vod alarms` and the read-only MCP
+  tool `camera_vod_alarms`. Use this index when ordinary files report
+  `recordType: none`; alarm intervals can share a continuous recording file.
+- Inspect device clock, DST and NTP settings with `system time`. Read regional
+  rules with `system dst get`, and apply verified partial changes with
+  `system dst set`. Device settings are never changed by a time diagnostic.
+- Add and remove real Home Hub children with `hub add/remove`, using separate
+  child credentials, explicit channel selection and no automatic mutation retry.
+- Container deployment files, desktop container launchers, and an OpenClaw agent
+  overlay. Container publication remains a separate, tested workflow.
+
+### Fixed
+
+- Preserve child-alias channel selection in historical event queries and honor
+  explicit channel 0 in live query, stream and monitor workflows.
+- Accept historical channel tags case-insensitively; match individual types in
+  combined AI notifications; retain active alarms when idle reports arrive.
+- Process distinct monitor events arriving in the same second.
+- Keep standalone event streams draining device notifications, share polls on
+  one session, and stop polling after timeout or client disconnect.
+- Request explicit default history types on NVR firmware that treats omission
+  as an empty filter, respecting the legacy filter field's length limit.
+- Report Hub management transport failures as an unknown outcome, with guidance
+  to inspect channels before retrying.
+
+### Distribution and validation
+
+- External packages remain LAN-only. They include the CLI, gateway, installers,
+  plugin assets, binary EULA and third-party notices, with no native remote
+  connectivity library. Packaged text and embedded dashboard are English-only.
+- The original RLN36 historical-channel report in #125 still needs acceptance
+  on the reported firmware. Related fixes passed local protocol tests and
+  read-only RLN8-410 checks; the issue is not closed by this release.
+- `--since` uses the CLI host's local clock. Explicit time bounds use the
+  device's local wall clock; no automatic timezone conversion is introduced.
+
 ## [0.20.0] — 2026-10-12
 
 ### Added
