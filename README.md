@@ -251,7 +251,7 @@ Print a camera's stream URLs, read from its real port configuration:
 reolink-cli --camera porch stream url --kind rtsp,rtmp,flv --stream main,sub
 ```
 
-Credentials come back as separate JSON fields. `--with-auth` embeds
+URLs omit credentials by default. `--with-auth` embeds
 `user:password@` in the URL for players that need it — treat that output as a
 password.
 
@@ -379,3 +379,11 @@ remove the marks; see [TRADEMARKS.md](TRADEMARKS.md).
   CLI source is not published here.
 - **Third-party open-source components** bundled in the binaries are listed in
   `THIRD-PARTY-LICENSES.txt` inside each release archive.
+
+## Container deployments
+
+See the [container deployment guide](docs/distribution-guide.md) for the
+version-pinned CLI/gateway image recipe, persistent data, desktop CLI/MCP
+launchers and the OpenClaw overlay. Build from verified external release
+artifacts; registry publication is a separate workflow. Native installation
+remains available through the installers above.

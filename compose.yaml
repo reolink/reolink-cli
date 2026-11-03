@@ -1,0 +1,27 @@
+name: reolink-cli
+services:
+  reolink:
+    image: ${REOLINK_IMAGE:-reolink-cli:${REOLINK_VERSION:-0.21.0}-external}
+    build:
+      context: .
+      args:
+        REOLINK_VERSION: ${REOLINK_VERSION:-0.21.0}
+        REOLINK_UID: ${REOLINK_UID:-10001}
+        REOLINK_GID: ${REOLINK_GID:-10001}
+        REOLINK_SKILL_DIR: ${REOLINK_SKILL_DIR:-skills/reolink-cli}
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    tmpfs:
+      - /tmp:mode=1777
+    volumes:
+      - reolink-data:/data
+volumes:
+  reolink-data:

@@ -153,13 +153,54 @@ reolink-cli --gateway-addr 127.0.0.1:9000 device expand nvr-lobby --names porch,
 # 3. Each child is now a first-class camera; the parent tag fans out
 reolink-cli --camera porch snapshot                   # one channel
 reolink-cli --tag nvr-lobby snapshot                  # fan-out across all children
-reolink-cli --tag nvr-lobby stream url --with-auth    # RTSP URLs for every channel
+reolink-cli --tag nvr-lobby stream url    # Credential-free RTSP URLs for every channel
 
 # Device-global ops (system / users / storage) still work on any child:
 reolink-cli --camera porch system reboot              # reboots the whole NVR
 ```
 
 Children share the parent's `host`/`user`/`password`; they differ only in `channel` and `tags`. `--drop-parent` removes the standalone NVR entry after expansion if you want to avoid confusion between "the NVR as a whole" and "camera 0". Re-running `device expand` on an already-expanded NVR errors on the first name collision — remove the prior children first.
+
+## Real Hub child binding and unbinding
+
+`device add/remove/expand` only manage local aliases. `hub add/remove` change
+actual Hub bindings. Check `features` includes `hub` before using these commands.
+They require the gateway, a parent Hub reachable over LAN, firmware support,
+and an explicit global `--channel N` from 0 to 63. Select the **parent alias**,
+never an expanded child or batch selector. Confirm intent and inspect Hub
+channels via `info` before a change; use a free channel for an addition.
+
+```bash
+# Prompt securely for the child's current password, separate from Hub credentials.
+reolink-cli --camera home-hub --channel 0 hub add --device-host 192.0.2.30:9000
+# Or send the child's UID to the Hub for pairing.
+reolink-cli --camera home-hub --channel 0 hub add --device-uid EXAMPLECHILD001
+# Inspect channels, then register local aliases for new children.
+reolink-cli --camera home-hub info
+reolink-cli device expand home-hub --yes
+# Real unbind: confirm, then prompt for a new nonempty standalone child password.
+reolink-cli --camera home-hub --channel 0 hub remove
+```
+
+`--device-user` and `--restore-user` default to `admin`. Global credentials are
+for the Hub. `--device-empty-password` explicitly permits a factory-default
+empty child password on add. In scripts, keep Hub credentials in the parent
+alias and use `--device-password-stdin` or `--restore-password-stdin`; removal
+also requires `--yes`. Never combine either with global `--password-stdin`.
+No child plaintext password flag exists.
+
+The Hub performs pairing; the child must be reachable and ready to pair. This
+version does not reset devices, configure Wi-Fi on unbind, pair via ONVIF, or
+exchange channels. Unbinding can interrupt Hub recording/access and does not
+delete local aliases. Remove stale aliases only after checking device state.
+
+A management operation may wait 64s; the CLI waits up to 120s for its gateway
+response. There are no automatic mutation retries. A timeout or disconnect means
+unknown outcome: inspect channels before another attempt. Device errors identify
+child password rejection (401, with attempt counters when supplied), connection
+failure (406), unsupported firmware (411), pairing failure (412), channel/device/
+powered-camera capacity (413/414/415), or unsupported command (405). Verify
+model and firmware compatibility on actual hardware.
 
 ## Identity
 

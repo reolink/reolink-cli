@@ -48,7 +48,7 @@ reolink-cli --camera front-door stream url
 # Full matrix: 3 protocols × 2 substreams for HA
 reolink-cli --camera front-door stream url --kind rtsp,rtmp,flv --stream main,sub
 
-# One-shot URL you can paste into VLC (user:pass@ embedded, percent-encoded)
+# User-local terminal only: authenticated VLC URL; never capture this in an AI tool call
 reolink-cli --camera front-door stream url --with-auth
 
 # NVR: expand once, then tag-fanout (one entry per channel)
@@ -72,8 +72,8 @@ reolink-cli --tag outdoor stream url --kind rtsp --stream main
 **`available: false` field** — the URL is correct but the device has that protocol's port **disabled** in its own network config. Tell the user: open Reolink app → Settings → Advanced → Port to enable. Don't "fix" by forcing the default port — it will just fail differently.
 
 **Credential handling:**
-- Default (no flag): URL is clean (`rtsp://192.168.1.10:554/...`), and `data.user` + `data.password` are sibling JSON fields. Safer to paste into Slack / Issues / share with a colleague.
-- `--with-auth`: embeds `user:password@` into the URL, percent-encoded. One-shot, convenient for VLC but **do not** paste into logs / Slack / GitHub issues — it will leak credentials.
+- Default (no flag): URL has no credentials (`rtsp://192.168.1.10:554/...`); output includes `data.user` and `data.with_auth: false`, but no password. Device addresses and usernames can still identify a private installation; redact them before sharing outside the task.
+- `--with-auth`: embeds `user:password@` into the URL, percent-encoded. If needed for VLC, have the user run this locally and keep the result out of AI tool output, chat, logs, Slack, and GitHub issues. Percent encoding does not hide the password.
 
 **Behind the scenes:** one gateway call — `get network` for ports. Gateway **must** be running (same as `info` / `config get`). For NVR/Hub multi-channel fan-out, use `device expand` (see `setup.md`) first — each channel becomes its own camera, then `--tag <nvr-name>` naturally fans out.
 
@@ -95,3 +95,18 @@ reolink-cli --camera front-door vod download "20260417_120000.mp4" -o /tmp/clip.
 ```
 
 Record types: `manual | sched | io | md | people | vehicle | face | dog_cat | visitor | other | package`.
+
+## Classified alarm-video index
+
+When `vod search` reports `recordType: none`, use `vod alarms` on devices that
+support the separate alarm-video index. It returns detected intervals rather
+than changing ordinary file metadata. Times must use the device's local clock;
+`--since` uses the CLI host's local clock.
+
+```bash
+reolink-cli --camera nvr --channel 5 vod alarms --from 2026-11-01T00:00:00 --to 2026-11-01T23:59:59 --type people --limit 100
+```
+
+MCP clients can call the read-only `camera_vod_alarms` tool with `channel`,
+`from`, `to`, and optional `recordType`, `streamType`, and `limit`.
+`source` is `alarm-video-index`; `truncated` means the scan limit was reached.

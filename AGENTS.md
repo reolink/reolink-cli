@@ -2,7 +2,9 @@
 
 Read this when an AI agent first encounters the plugin. Your job is to confirm the install, then operate cameras via the skill.
 
-If the binaries are not on disk yet, the one-line installer fetches them and verifies the download against the checksum committed to this repository:
+For container deployments, use the Docker-backed `reolink-cli` entry installed by `scripts/setup-container-cli.py`, or select `REOLINK_CONTAINER` and use the packaged `scripts/run-cli.sh` (`run-cli.cmd` on Windows). `REOLINK_DOCKER_CONTEXT` optionally selects a NAS context. Check the container CLI version and gateway rather than installing native binaries on the desktop. The gateway already runs under Compose: skip the native setup below. The repository distribution guide documents setup/checks, Docker contexts, and media retrieval. Read the container branches of update/uninstall commands before those actions.
+
+For native deployments, if the binaries are not on disk yet, the one-line installer fetches them and verifies the download against the checksum committed to this repository:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/reolink/reolink-cli/main/install.sh | sh

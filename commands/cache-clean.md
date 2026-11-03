@@ -3,6 +3,8 @@ description: Preview + clean cached artifacts older than 7 days
 argument-hint: [--older-than 30d]
 ---
 
+Container mode: use the installed Docker-backed CLI entry on PATH. Otherwise, when `REOLINK_CONTAINER` is set, run the CLI commands below through the packaged `scripts/run-cli.sh` (`run-cli.cmd` on Windows), preserving their arguments. This operates on the selected container, not a native installation.
+
 Clean old cache entries (snapshots, TTS PCM clips, etc.). The cache lives in the
 platform cache directory — `~/.cache/reolink-cli/` on Linux,
 `~/Library/Caches/reolink-cli/` on macOS, `%LOCALAPPDATA%\reolink-cli\cache\` on

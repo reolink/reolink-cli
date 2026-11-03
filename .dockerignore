@@ -1,0 +1,17 @@
+**
+!Dockerfile
+!container/
+!container/entrypoint.sh
+!container/agent-cli.sh
+!plugins/
+!plugins/reolink-cli/
+!plugins/reolink-cli/skills/
+!plugins/reolink-cli/skills/reolink-cli/
+!plugins/reolink-cli/skills/reolink-cli/SKILL.md
+!plugins/reolink-cli/skills/reolink-cli/references/
+!plugins/reolink-cli/skills/reolink-cli/references/*.md
+!skills/
+!skills/reolink-cli/
+!skills/reolink-cli/SKILL.md
+!skills/reolink-cli/references/
+!skills/reolink-cli/references/*.md

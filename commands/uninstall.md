@@ -3,6 +3,8 @@ description: Remove reolink-cli + reolink-gateway (keeps config by default; pass
 argument-hint: [purge]
 ---
 
+**Container deployments (Docker-backed entry or `REOLINK_CONTAINER`):** stop only the selected Compose deployment with `docker compose down` from its deployment directory, without `--volumes`. Remove the plugin through the client. Remove only the installed Docker-backed wrapper and its PATH entry if present; preserve native binaries. Do not run native uninstallers inside the container or delete host binaries. Removing the data volume destroys credentials, keys, and media; require explicit authorization identifying that volume before any purge. Stop here after the container workflow; the steps below are for native installations.
+
 Uninstall the reolink binaries. **Default behaviour is non-destructive** — keeps `~/.config/reolink-cli` (credentials, monitor rules), `~/.cache/reolink-cli` (snapshots), `~/.local/state/reolink-cli`. Full purge only if the user asks.
 
 **If `$ARGUMENTS` contains "purge" or "--purge":** use the purge variant.

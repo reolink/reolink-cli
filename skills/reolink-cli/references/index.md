@@ -4,7 +4,7 @@ Load the file matching your task — don't read all of them.
 
 | File | Read when the task involves |
 |---|---|
-| [`setup.md`](setup.md) | Discovery (`discover`), device registry (`device add/list/update/remove/import/inventory`), identity (`ping`, `login`, `info`, `capabilities`), or generic `config get/set` paths |
+| [`setup.md`](setup.md) | Hub binding (`hub add/remove`), discovery (`discover`), device registry (`device add/list/update/remove/import/inventory`), identity (`ping`, `login`, `info`, `capabilities`), or generic `config get/set` paths |
 | [`media.md`](media.md) | Preview (`preview capture/play/start/stop`), snapshot, `stream url` (RTSP/RTMP/FLV integration helper for Frigate / HA / go2rtc / VLC), VOD search & download |
 | [`controls.md`](controls.md) | Light (IR / status-LED / spotlight / whiteled), image (flip / tune), OSD, audio, privacy mask |
 | [`ptz.md`](ptz.md) | Any `ptz …` — movement, presets, zoom/focus, patrol, guard, autotrack |
